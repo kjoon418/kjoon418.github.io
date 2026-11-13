@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { article, feed, notFound } from './render.mjs';
-import { categories } from './site.mjs';
+import { categories, homeCategory } from './site.mjs';
 
 const project = await realpath(fileURLToPath(new URL('..', import.meta.url)));
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -96,6 +96,7 @@ export async function buildSite({ preview = false } = {}) {
   await mkdir(output, { recursive: true });
   await cp(join(project, 'assets'), join(output, 'assets'), { recursive: true });
   await Promise.all([
+    writePage(output, '/', feed(homeCategory, posts, preview, '/')),
     ...categories.map((category) => writePage(output, category.path, feed(category, posts, preview))),
     ...posts.map((post, index) => writePage(output, post.path, article(post, posts[index - 1], posts[index + 1], preview))),
     writeFile(join(output, '404.html'), notFound(), 'utf8'),

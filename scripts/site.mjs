@@ -7,8 +7,10 @@ export const site = {
 };
 
 export const categories = [
-  { key: 'all', label: '전체', title: 'All', path: '/' },
+  { key: 'all', label: '전체', title: 'All', path: '/category/all/' },
   { key: 'tech', label: '기술', title: 'Tech', path: '/category/tech/' },
   { key: 'daily', label: '일상', title: 'Daily', path: '/category/daily/' },
   { key: 'retrospect', label: '회고', title: 'Retrospect', path: '/category/retrospect/' },
 ];
+
+export const homeCategory = categories.find(({ key }) => key === 'tech');

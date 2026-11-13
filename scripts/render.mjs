@@ -47,6 +47,7 @@ function layout({ page, title, description, path, preview, image, content }) {
   <meta property="og:description" content="${escape(description)}">` : '<meta name="robots" content="noindex">'}
   ${image && canonical ? `<meta property="og:image" content="${escape(new URL(image, site.url).href)}">` : ''}
   <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <link rel="stylesheet" href="/assets/styles.css">
 </head>
 <body class="page-${page}">
@@ -89,19 +90,22 @@ function card(post) {
   </article></li>`;
 }
 
-export function feed(current, posts, preview) {
+export function feed(current, posts, preview, path = current.path) {
   const isAll = current.key === 'all';
   const visible = isAll ? posts : posts.filter(({ category }) => category === current);
-  const tabs = categories.map(({ key, label, path }) => `<a class="category-link" href="${path}" ${key === current.key ? 'aria-current="page"' : ''}>${label}</a>`).join('\n        ');
+  const tabs = categories.map((category) => {
+    const selected = category === current;
+    return `<a class="category-link" href="${selected ? path : category.path}" ${selected ? 'aria-current="page"' : ''}>${category.label}</a>`;
+  }).join('\n        ');
   const listing = visible.length
     ? `<ul class="post-grid" role="list">${visible.map(card).join('\n')}</ul>`
     : `<div class="empty-state" data-category="${current.key}"><h3>아직 올라온 글이 없어요.</h3><p>${isAll ? '새 글을 올리면 이곳에 표시됩니다.' : '다른 카테고리의 글을 둘러보세요.'}</p></div>`;
 
   return layout({
     page: 'feed',
-    title: isAll ? site.name : `${current.label} | ${site.name}`,
+    title: path === '/' ? site.name : `${current.label} | ${site.name}`,
     description: site.description,
-    path: current.path,
+    path,
     preview,
     content: `<header class="hero">
       <h1 class="wordmark">${brand}</h1>
@@ -149,10 +153,11 @@ export function article(post, newer, older, preview) {
 }
 
 export function notFound() {
+  const allPosts = categories.find(({ key }) => key === 'all');
   return layout({
     page: 'error',
     title: `페이지를 찾을 수 없습니다 | ${site.name}`,
     description: '요청하신 페이지를 찾을 수 없습니다.',
-    content: `<div class="empty-state"><h1>페이지를 찾을 수 없어요.</h1><p>주소를 확인하거나 전체 글로 돌아가세요.</p><a class="back-link" href="/">${icon('left')} 전체 글 보기</a></div>`,
+    content: `<div class="empty-state"><h1>페이지를 찾을 수 없어요.</h1><p>주소를 확인하거나 전체 글로 돌아가세요.</p><a class="back-link" href="${allPosts.path}">${icon('left')} 전체 글 보기</a></div>`,
   });
 }
