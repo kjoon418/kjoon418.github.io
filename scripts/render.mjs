@@ -82,7 +82,7 @@ function card(post) {
   return `<li><article class="post-card">
     <a class="card-link" href="${post.path}" aria-labelledby="post-${post.slug}-title">
       ${cover}
-      <div class="card-meta"><span class="author-mark" aria-hidden="true">${initial}</span><span>${author}</span><span class="category-label">${post.category.label}</span></div>
+      <div class="card-meta"><span class="category-label">${post.category.label}</span></div>
       <h3 class="card-title" id="post-${post.slug}-title">${escape(post.title)}</h3>
       <p class="card-summary">${escape(post.summary)}</p>
       ${date(post, 'card-date')}
@@ -143,7 +143,7 @@ export function article(post, newer, older, preview) {
         <div class="article-meta"><a class="category-label" href="${post.category.path}">${post.category.label}</a>${post.preview ? '<span class="preview-note">예시 글</span>' : ''}</div>
         <h1 class="article-title">${title}</h1>
         <p class="article-summary">${summary}</p>
-        <div class="article-byline"><span class="author-mark" aria-hidden="true">${initial}</span><span>${author}</span>${date(post, 'article-date', { withTime: true })}</div>
+        ${date(post, 'article-date', { withTime: true })}
       </header>
       ${cover}
       <div class="article-content">${post.body}</div>
