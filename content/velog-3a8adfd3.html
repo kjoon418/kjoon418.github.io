@@ -1,0 +1,229 @@
+<!--
+{
+  "title": "[Java] 리플렉션 기초",
+  "summary": "Java 리플렉션의 기초적인 사용법을 알아보자",
+  "date": "2025-11-23T15:12:05.497Z",
+  "category": "tech",
+  "cover": "/assets/velog/ab44b38aad8eb4ad0e7c.png",
+  "coverAlt": "[Java] 리플렉션 기초"
+}
+-->
+<h3 id="개요">개요</h3>
+<p>우테코 프리코스의 오픈 미션으로 나만의 프레임워크를 만들어보았다.</p>
+<p>프레임워크를 만들다보니 당연히 <strong>리플렉션</strong>을 사용해야만 해결할 수 있는 경우가 몇 있었는데, 리플렉션이라는 개념에 대해 아예 모르고 있던 탓에 상당 부분을 AI를 통해 해결해야만 했다.</p>
+<p>AI를 사용하더라도, 내가 잘 아는 분야에서 사용하는 것과 모르는 분야에서 사용하는 것의 차이는 매우 크다고 생각한다.<br>
+그동안 리플렉션 개념이 너무 어려울까봐 도전을 미루기만 했는데, 이 경험을 계기로 리플렉션을 이해해보고, AI의 도움 없이 코드를 작성할 수 있는 정도로 성장해보고자 한다.</p>
+<hr>
+<h3 id="리플렉션이란">리플렉션이란?</h3>
+<p>&quot;<strong>반사하다</strong>&quot;, &quot;<strong>되돌아보다</strong>&quot;라는 뜻의 Reflect에서 유래되었다.</p>
+<p>프로그램이 실행 중에 자기 자신의 구조를 들여다보고 그 구조를 변경/조작할 수 있는 기능을 의미한다.</p>
+<p>리플렉션을 통해 <strong>클래스, 메서드, 필드 등의 메타데이터를 런타임에 동적으로 조사</strong>하고 사용할 수 있다.</p>
+<hr>
+<h3 id="클래스의-메타데이터">클래스의 메타데이터</h3>
+<h4 id="1-메타데이터-조회하기">1. 메타데이터 조회하기</h4>
+<pre><code class="language-java">// 1. 클래스에서 찾는 방법: .class
+Class&lt;MyClass&gt; classData = MyClass.class;
+
+// 2. 인스턴스에서 찾는 방법: getClass()
+MyClass instance = new MyClass();
+Class&lt;? extends MyClass&gt; classData = instance.getClass();
+
+// 3. 문자(패키지 경로)로 찾는 방법: Class.forName
+Class&lt;?&gt; classData = Class.forName(&quot;hello.world.MyClass&quot;);</code></pre>
+<p>클래스의 메타데이터는 <code>Class</code>라는 클래스로 표현된다.<br>
+또한, 위와 같은 방법으로 획득할 수 있다.</p>
+<h4 id="2-class의-클래스-정보-관련-메서드">2. Class의 클래스 정보 관련 메서드</h4>
+<p>모두 Class 클래스의 인스턴스 메서드다.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="article-table"><table><thead><tr><th>메서드</th><th>설명</th></tr></thead><tbody><tr><td><code>String getName()</code></td><td>패키지를 포함한 이름을 반환한다.</td></tr><tr><td><code>String getSimpleName()</code></td><td>패키지를 제외한 이름을 반환한다.</td></tr><tr><td><code>Package getPackage()</code></td><td>패키지 정보를 반환한다.</td></tr><tr><td><code>String getPackageName()</code></td><td>패키지 이름을 반환한다.</td></tr><tr><td><code>Class&lt;? super T&gt; getSuperclass()</code></td><td>부모 클래스 정보를 반환한다.<br>만일 Class가 가리키던 클래스가 Object, 인터페이스, 기본 타입(int 등), void이라면 null을 반환한다.</td></tr><tr><td><code>Class&lt;?&gt;[] getInterfaces()</code></td><td>직접 구현한 인터페이스 정보를 반환한다.</td></tr><tr><td><code>boolean isInterface()</code></td><td>인터페이스인지 여부를 반환한다.</td></tr><tr><td><code>boolean isEnum()</code></td><td>enum인지 여부를 반환한다.</td></tr><tr><td><code>boolean isAnnotation()</code></td><td>애노태이션인지 여부를 반환한다.</td></tr><tr><td><code>int getModifiers()</code></td><td>수정자(접근 제어자 + 비 접근 제어자)에 대한 정보를 숫자 형태로 반환한다.<br>수정자에 대한 정보는 <code>Modifier</code> 클래스의 정적 메서드로 조회할 수 있다.<br>(ex. <code>Modifier.isPublic</code> 등)</td></tr></tbody></table></div>
+<p><code>getModifiers</code>를 이용하면 수정자를 조회할 수 있는데, 수정자는 다음과 같이 분류할 수 있다는 것도 참고로 알아두자.</p>
+<ol>
+<li>접근 제어자(접근 지정자): <code>public</code>, <code>protected</code>, <code>default</code>, <code>private</code></li>
+<li>비 접근 제어자: <code>static</code>, <code>final</code>, <code>abstract</code> 등</li>
+</ol>
+<hr>
+<h3 id="메서드를-조회하고-호출하기">메서드를 조회하고 호출하기</h3>
+<p>메서드에 대한 메타데이터는 <code>Method</code> 객체로 표현된다.</p>
+<h4 id="0-class의-method-관련-메서드">0. Class의 Method 관련 메서드</h4>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="article-table"><table><thead><tr><th>메서드</th><th>설명</th></tr></thead><tbody><tr><td><code>Method[] getMethods()</code></td><td>상위 클래스에서 상속 받은 메서드를 포함해, 모든 <code>public</code> 메서드를 반환한다.<br>해당 클래스에서 선언된 메서드라 하더라도, <code>public</code>이 아니라면 반환하지 않는다.</td></tr><tr><td><code>Method[] getDeclaredMethods()</code></td><td>해당 클래스에서 선언한 모든 메서드를 반환한다.<br>접근 제어자에 상관없이 모두 반환한다.<br>상위 클래스에서 상속된 메서드는 포함하지 않는다.</td></tr><tr><td><code>Method getDeclaredMethod(String name, Class&lt;?&gt;… parameterTypes)</code></td><td>이름과 파라미터 타입이 일치하는 메서드를 반환한다.</td></tr></tbody></table></div>
+<h4 id="1-정적-메서드-호출기존-방식">1. 정적 메서드 호출(기존 방식)</h4>
+<pre><code class="language-java">MyClass instance = new MyClass();
+
+instance.hello(&quot;Hello world!&quot;);</code></pre>
+<p>우리가 일반적으로 사용하는 메서드 호출 방식이다.<br>
+코드를 직접 수정하지 않는 이상, 메서드를 호출하는 곳은 항상 정적이다.<br>
+(해당 코드를 실행할 땐 항상 <code>instance.hello</code> 메서드가 호출된다)</p>
+<p>이를 <strong>정적 메서드 호출</strong>이라고 부른다.</p>
+<h4 id="2-동적-메서드-호출method-활용">2. 동적 메서드 호출(Method 활용)</h4>
+<pre><code class="language-java">Class&lt;MyClass&gt; myClass = MyClass.class;
+String methodName = &quot;hello&quot;;
+
+// 메서드 이름과 파라미터 타입들을 통해 메서드를 찾는다
+Method helloMethod = myClass.getDeclaredMethod(methodName, String.class);
+
+// 메서드를 실행할 인스턴스와 파라미터를 전달해 메서드를 실행한다
+helloMethod.invoke(helloInstance, &quot;Hello world!&quot;);</code></pre>
+<p><code>Method</code>의 메타 데이터를 기반으로 메서드를 호출하는 방식이다.<br>
+메서드 이름과 파라미터 정보에 따라, 어떤 메서드를 호출할지가 동적으로 결정된다.</p>
+<p>이를 <strong>동적 메서드 호출</strong>이라고 부른다.</p>
+<p><code>Method</code>는 단순히 메타데이터이기 때문에, 그 자체로는 메서드를 실행할 수 없다.<br>
+따라서, 어느 인스턴스의 메서드를 호출할 것인지를 같이 지정해 주어야 한다.</p>
+<p>참고로 메서드의 접근 지정자가 <code>private</code>인 경우엔 <code>method.setAccessible(true)</code>를 통해 접근 허용 설정을 해 주어야 한다.<br>
+그렇지 않으면 <code>IllegalAccessException</code>이 발생한다.</p>
+<hr>
+<h3 id="field-사용하기">Field 사용하기</h3>
+<p>필드에 대한 메타데이터는 <code>Field</code> 객체로 표현된다.</p>
+<h4 id="0-class의-field-관련-메서드">0. Class의 Field 관련 메서드</h4>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="article-table"><table><thead><tr><th>메서드</th><th>설명</th></tr></thead><tbody><tr><td><code>Field[] getFields()</code></td><td>상위 클래스에서 상속 받은 필드를 포함해, 모든 <code>public</code> 필드를 반환한다.<br>해당 클래스에서 선언된 필드라 하더라도, <code>public</code>이 아니면 반환하지 않는다.</td></tr><tr><td><code>Field[] getDeclaredFields()</code></td><td>해당 클래스에서 선언한 모든 필드를 반환한다.<br>접근 제어자에 상관없이 모두 반환한다.<br>상위 클래스에서 상속된 필드는 포함하지 않는다.</td></tr></tbody></table></div>
+<h4 id="1-필드-값-수정하기">1. 필드 값 수정하기</h4>
+<pre><code class="language-java">User user = new User();
+Class&lt;? extends User&gt; userClass = user.getClass();
+
+// User.name 필드에 접근한다
+Field nameField = userClass.getDeclaredField(&quot;name&quot;);
+
+// private 필드라면 이처럼 접근을 허용해야 한다
+nameField.setAccessible(true);
+
+// 인스턴스와, 수정할 필드 값을 전달한다
+nameField.set(user, &quot;New Name&quot;);</code></pre>
+<p>위와 같이 필드에 접근해서 값을 수정할 수 있다.</p>
+<p><code>private</code> 필드에 <code>setAccessible(true)</code> 없이 접근하면 <code>IllegalAccessException</code>이 발생하니 주의하자.</p>
+<hr>
+<h3 id="생성자를-통해-인스턴스-만들기">생성자를 통해 인스턴스 만들기</h3>
+<p>생성자에 대한 메타데이터는 <code>Constructor</code> 객체로 표현된다.</p>
+<h4 id="0-class의-constructor-관련-메서드">0. Class의 Constructor 관련 메서드</h4>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="article-table"><table><thead><tr><th>메서드</th><th>설명</th></tr></thead><tbody><tr><td><code>Constructor&lt;?&gt;[] getConstructors()</code></td><td>접근지정자가 <code>public</code>인 모든 생성자를 반환한다.</td></tr><tr><td><code>Constructor&lt;T&gt; getConstructor(Class&lt;?&gt;… parameterTypes)</code></td><td>접근 제어자가 <code>public</code>이면서 파라미터 정보와 일치하는 생성자를 반환한다.</td></tr><tr><td><code>Constructor&lt;T&gt;[] getDeclaredConstructors()</code></td><td>선언된 모든 생성자를 반환한다.<br>접근 제어자에 상관없이 모두 반환한다.</td></tr><tr><td><code>Constructor&lt;T&gt; getDeclaredConstructor(Class&lt;?&gt; paremeterTypes)</code></td><td>선언된 생성자 중 파라미터 정보와 일치하는 생성자를 반환한다.<br>접근 제어자에 상관없이 반환한다.</td></tr></tbody></table></div>
+<p>생성자는 상속 개념이 없으므로, 부모 타입의 생성자는 아무 관련도 없다.</p>
+<h4 id="1-생성자를-탐색해-인스턴스-생성하기">1. 생성자를 탐색해 인스턴스 생성하기</h4>
+<pre><code class="language-java">Class&lt;MyClass&gt; myClass = MyClass.class;
+
+Constructor&lt;MyClass&gt; constructor = myClass.getDeclaredConstructor(String.class);
+constructor.setAccessible(true);
+
+String constructorArgument = &quot;Hello World!&quot;;
+MyClass instance = constructor.newInstance(constructorArgument);</code></pre>
+<p><code>Constructor</code>의 <code>newInstance</code> 메서드를 통해 인스턴스를 생성할 수 있다.</p>
+<p>생성자 역시 접근 지정자가 <code>private</code>일 경우 <code>setAccessible(true)</code>가 필요하다.</p>
+<hr>
+<h3 id="리플렉션을-사용할-때의-주의사항">리플렉션을 사용할 때의 주의사항</h3>
+<p>기본적으로, 리플렉션은 캡슐화를 위배하므로 객체지향 원칙을 위반한다.<br>
+이에 따라, 리플렉션을 남발하면 유지보수 난이도가 크게 올라가고, 캡슐화 위반으로 인한 버그를 마주하기 쉽다.</p>
+<p>리플렉션은 가급적 <strong>테스트나 라이브러리 개발</strong>에 사용하고, 애플리케이션 코드에서 사용하는 것을 지양하자.</p>
+<hr>
+<h3 id="마치며">마치며</h3>
+<p>리플렉션에 대해 기초만 공부한 것이지만, 그 기초 자체는 매우 단순하다.<br>
+지금까지 겁 먹고 학습하지 않은 자신이 한심할 정도다.</p>
+<p>물론 리플렉션을 제대로 사용하기 위한 심화 과정은 매우 복잡하겠지만, 사실 지금 학습한 메서드와 객체만으로도 대부분의 상황을 해결할 수 있을 것 같다.</p>
+<p>이후에 이를 기반으로 나만의 편리한 라이브러리를 직접 만들어보고, 그 과정에서 리플렉션 심화 기술을 공부해 봐야겠다.</p>

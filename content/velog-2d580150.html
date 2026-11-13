@@ -1,0 +1,178 @@
+<!--
+{
+  "title": "[우아한테크코스] 방탈출 사용자 예약 미션 회고",
+  "summary": "한 달째 방탈출중...",
+  "date": "2026-05-26T08:59:00.221Z",
+  "category": "retrospect",
+  "cover": "/assets/velog/8c0f6e3624f7ee0ec855.jpg",
+  "coverAlt": "[우아한테크코스] 방탈출 사용자 예약 미션 회고"
+}
+-->
+<h3 id="개요">개요</h3>
+<p>지난 미션인 '방탈출 예약 관리'에 이어 '방탈출 사용자 예약' 미션을 끝마쳤다.<br>
+이번 미션의 핵심 주제인 '<strong>API 설계</strong>'와 '<strong>에러 처리</strong>'에 맞게 여러 깨달음을 얻었으니, 이를 정리해보고자 한다.</p>
+<hr>
+<h3 id="백엔드의-에러-메시지는-누구를-위한-것">백엔드의 에러 메시지는 누구를 위한 것?</h3>
+<h4 id="누구를-위한-것인지가-중요할까">누구를 위한 것인지가 중요할까?</h4>
+<p>'백엔드의 에러 메시지가 누구를 위한 것인가?'는 크게 2가지로 대답할 수 있다.</p>
+<ol>
+<li><strong>서비스 사용자</strong>를 위한 것이다.</li>
+<li><strong>클라이언트 개발자</strong>를 위한 것이다.</li>
+</ol>
+<p>메시지가 누구를 위한 것인지가 중요할까?<br>
+누구를 위해 작성하는지에 따라 무엇이 달라질까?</p>
+<pre><code class="language-java">// 서비스 사용자를 위한 메시지
+String message = &quot;미래 시간만 예약할 수 있습니다. 다른 시간을 선택해 주세요.&quot;;</code></pre>
+<p><a href="https://toss.tech/article/21021">참고 포스트</a></p>
+<p>'서비스 사용자'를 위해 메시지를 작성한다면, 다음 요소가 중요해진다.<br>
+1. 사용자 입장에서 이해할 수 있는 언어인가?<br>
+2. 에러 상황을 해결할 수 있는 방법을 알려주는가?<br>
+3. 부정형 대신 긍정형을 사용했는가?</p>
+<p>즉, <strong>'UX에 적절한가?'</strong>를 고려하며 메시지를 작성해야 한다.</p>
+<pre><code class="language-java">// 클라이언트 개발자를 위한 메시지
+String message = &quot;과거 시간의 예약은 불가능합니다.&quot;
+		+ &quot; 요청한 예약 시간: &quot; + requestTime
+        + &quot; 현재 서버 시간: &quot; + LocalDateTime.now();</code></pre>
+<p>반면에 '클라이언트 개발자'를 위해 메시지를 작성한다면, 다음 요소가 중요해진다.<br>
+1. 개발자가 에러의 원인을 파악할 수 있는가?<br>
+2. 버그를 재현하는데 필요한 정보를 충분히 제공하고 있는가?</p>
+<p>즉, <strong>'디버깅이 쉬운가?'</strong>를 고려하며 메시지를 작성해야 한다.</p>
+<h4 id="서비스-사용자를-위한-메시지는-어떤-한계를-갖는가">서비스 사용자를 위한 메시지는 어떤 한계를 갖는가?</h4>
+<p>기존 UX가 &quot;시간을 잘못 선택해서 예약에 실패하면, 사용자가 직접 다른 시간을 선택하도록 만든다&quot;였다고 가정해보자.</p>
+<pre><code class="language-java">// 기존 메시지
+String message = &quot;미래 시간만 예약할 수 있습니다. 다른 시간을 선택해 주세요.&quot;;</code></pre>
+<p>사용자가 에러를 해결할 수 있는 방법을 제공하기 위해, 위와 같이 메시지를 작성했다.</p>
+<p>그런데 갑자기, 기획자가 &quot;이제 사용자 흐름이 바뀌어서, 예약에 실패하면 자동으로 다른 시간을 골라줄거에요!&quot;라고 말했다.<br>
+백엔드의 에러 메시지는 어떻게 바뀌어야 할까?</p>
+<pre><code class="language-java">// UX 변화에 백엔드 에러 메시지가 영향 받는다
+String message = &quot;미래 시간만 예약할 수 있습니다. 가까운 시간을 선택해 드릴게요.&quot;;</code></pre>
+<p>백엔드의 에러 메시지가 UX 변화에 영향 받는다.<br>
+<strong>에러 메시지에 뷰의 관심사가 섞였기 때문</strong>에 이런 문제가 발생한다.</p>
+<p>즉, 백엔드 개발자가 &quot;이 메시지가 어떤 화면에서 띄워질지&quot;를 고려해야 한다.</p>
+<p>심지어는 '웹'과 '모바일' 클라이언트 모두를 고려해야 한다면, 백엔드 개발자가 에러 메시지를 작성할 때 시간을 얼마나 쏟아야 할까?</p>
+<h4 id="클라이언트-개발자를-위해-작성하면">클라이언트 개발자를 위해 작성하면?</h4>
+<pre><code class="language-java">// 클라이언트 개발자의 디버깅을 돕는데 초점을 맞춘다
+String message = &quot;과거 시간의 예약은 불가능합니다.&quot;
+		+ &quot; 요청한 예약 시간: &quot; + requestTime
+        + &quot; 현재 서버 시간: &quot; + LocalDateTime.now();</code></pre>
+<p>반면, '클라이언트 개발자'를 위해 메시지를 작성한다면 어떻게 될까?<br>
+메시지는 오직 <strong>비즈니스 요구사항이 수정되었을 때</strong>만 변할 것이다.</p>
+<p>따라서, 백엔드로부터 '뷰'라는 관심사를 떨어트릴 수 있다.<br>
+뷰는 클라이언트 혼자서 담당하도록 책임을 분리하는 것이다.</p>
+<pre><code class="language-java">public enum ErrorCode {
+	USER_NOT_FOUND, // 회원을 찾지 못했을 때의 에러 코드
+    RESERVATION_NOT_FOUND, // 예약을 찾지 못했을 때의 에러 코드
+&#32;&#32;&#32;&#32;
+    // ...
+&#32;&#32;&#32;&#32;
+}</code></pre>
+<p>이제는 클라이언트가 에러에 따라 사용자에게 맞춤 메시지를 제공할 것이다.<br>
+따라서, <strong>클라이언트에서 에러를 분기 처리해야 한다</strong>.</p>
+<p>HTTP 상태 코드만으로도 분기할 수 있다면 좋겠지만, 에러 상황이 조금만 다양해져도 HTTP 상태 코드만 보고는 에러 상황을 파악하기 어려워진다.<br>
+따라서, 클라이언트의 분기 처리를 위해 <strong>커스텀 예외 코드</strong>를 도입해야 한다.</p>
+<pre><code class="language-java">public record ErrorResponse(
+	String message, // 클라이언트 디버깅을 위한 메시지
+    ErrorCode errorCode // 에러 분기 처리를 위한 상태 코드
+) {
+}</code></pre>
+<p>응답이 조금 더 복잡해졌지만, 백엔드가 더 이상 뷰에 신경쓰지 않아도 되도록 개선되었다.<br>
+또한, 클라이언트 개발자가 장애를 만났을 때 빠르게 해결할 수 있게 되었다.</p>
+<h3 id="왜-get과-post는-데이터를-다르게-담는가">왜 GET과 POST는 데이터를 다르게 담는가?</h3>
+<h4 id="post는-왜-데이터를-body에-담을까">POST는 왜 데이터를 Body에 담을까?</h4>
+<p>쿼리 파라미터는 URI의 일부이다.<br>
+따라서, 데이터를 쿼리에 담으면, 그 데이터가 '리소스를 식별하기 위한 값'이라고 생각할 수 있다.</p>
+<p>POST에서 '생성'을 위한 값은, 리소스 식별과는 관련 없는 값이다.<br>
+따라서, Body에 담는게 바람직하다.</p>
+<p>또한, 다음과 같은 이유들도 있다.<br>
+1. 쿼리 파라미터로는 중첩 데이터나 배열 데이터를 처리하기 어렵다.<br>
+2. 쿼리 파라미터는 캐싱할 수 있으므로, 멱등성을 보장하지 않는 POST와 맞지 않는다.<br>
+3. 쿼리 파라미터는 새로고침, 뒤로가기 등에 포함된다.</p>
+<h4 id="get은-왜-데이터를-쿼리-파라미터에-담을까">GET은 왜 데이터를 쿼리 파라미터에 담을까?</h4>
+<p>엄밀히 말하자면 GET도 Request Body를 사용할 수 있지만, 사용을 권장하지 않는다.<br>
+왜일까?<br>
+기본적으로 <strong>GET은 캐싱 가능한 요청</strong>이기 때문이다.<br>
+(GET은 멱등성을 보장하니, 같은 데이터로 여러 번 요청을 보내도 문제되지 않는다)</p>
+<p>위에서 언급했듯, <strong>Request Body의 정보는 뒤로가기나 새로고침에 포함되지 않으니</strong>, 새로고침시 이전과 다른 페이지를 보여줄 수 있다.</p>
+<p>또한, GET에 포함되는 정보는 보통 '결과를 필터링'하기 위해 사용된다.<br>
+따라서, POST 때와 달리 URI에 포함되는게 더 자연스럽다.</p>
+<h3 id="객체-그래프-탐색이-꼭-가능해야-할까">객체 그래프 탐색이 꼭 가능해야 할까?</h3>
+<pre><code class="language-java">// Reservation을 통해 Theme에 접근할 수 있는 버전
+public record Reservation(
+	Long id,
+    String name,
+    Theme theme
+) {
+}</code></pre>
+<p>Spring Data JPA에 익숙한 당신이라면, 엔티티 간 '객체 그래프 탐색'이 가능하도록 구현하는게 더 일반적일 것이다.<br>
+분명한 이점이 있지만, <strong>반드시 그래야만 할까?</strong></p>
+<pre><code class="language-java">// Theme을 알아내고 싶다면 ThemeRepository를 거쳐야 한다
+public record Reservation(
+	Long id,
+    String name,
+    Long themeId
+) {
+}</code></pre>
+<p><code>Reservation</code>이 <code>Theme</code>을 바로 의존하는건 편리할 수 있지만, 이로 인해 생기는 <strong>의존관계로 인한 복잡도</strong> 역시 고려해야 한다.</p>
+<p>이젠 <code>Reservation</code>이 <code>Theme</code>을 바로 의존하지 않으니, <code>Reservation</code> 단위 테스트 작성이 한결 수월해진다.</p>
+<p>모든 상황에 적용되는 정답이 없으니, &quot;<strong>객체 그래프 탐색이 가능해야만 한다</strong>&quot;라는 편견을 이겨내고, 트레이드 오프를 고려해보자.</p>
+<h3 id="uuid-사용을-고려하라">UUID 사용을 고려하라</h3>
+<h4 id="pk-생성을-데이터베이스에-위임하면-무엇이-불편할까">PK 생성을 데이터베이스에 위임하면 무엇이 불편할까?</h4>
+<pre><code class="language-java">public record Fruit(
+	Long id, // id에 null을 허용해야 한다
+    String name
+)</code></pre>
+<p>일반적으로 <code>IDENTITY</code> 전략으로 PK를 생성하곤 한다.<br>
+PK 생성을 애플리케이션 단에서 해결하지 않고 데이터베이스에 위임하니, <strong>엔티티의 <code>id</code> 속성에 <code>null</code>을 허용해야 하는 문제</strong>가 발생한다.</p>
+<p>&quot;<code>id</code>가 잠깐 <code>null</code>일 수도 있는게 그렇게 문제가 되나?&quot;라고 생각할 수 있다.<br>
+그렇다면, 이 상태로 엔티티의 <code>equals</code>를 구현해보자.</p>
+<pre><code class="language-java">public record Fruit(
+	Long id,
+    String name
+) {
+    @Override
+    public int hashCode() {
+    &#9;// id가 null이면 어떡하지?
+        return Objects.hashCode(id);
+    }
+}</code></pre>
+<p>엔티티는 개념적으로 <strong><code>id</code>로 식별되어야 한다</strong>.<br>
+하지만 <code>id</code>가 <code>null</code>일 수 있다면, <code>equals</code>와 <code>hashCode</code>를 어떻게 구현해야 할까?</p>
+<h4 id="pk-생성을-애플리케이션이-책임져보자">PK 생성을 애플리케이션이 책임져보자</h4>
+<pre><code class="language-java">public record Fruit(
+	UUID id,
+    String name
+) {
+	public Fruit {
+    &#9;// id가 null일 수 없도록 막을 수 있다
+    &#9;if (id == null) {
+        &#9;throw new IllegalArgument(&quot;Fruit의 식별자는 null일 수 없습니다.);
+        }
+    }
+}</code></pre>
+<pre><code class="language-java">public void createFruit(String name) {
+	Fruit fruit = new Fruit(
+    &#9;UUID.randomUUID(), // ID를 애플리케이션이 바로 생성할 수 있다
+        name
+    );
+&#32;&#32;&#32;&#32;
+    // ...
+}</code></pre>
+<p><code>UUID</code>를 사용한다면, PK 생성을 애플리케이션이 책임질 수 있다.<br>
+따라서, 데이터베이스가 <code>id</code>를 만들어줄 때까지 <code>id</code>에 <code>null</code>을 보관할 필요가 없어진다.</p>
+<h4 id="uuid의-단점과-극복-방법은">UUID의 단점과 극복 방법은?</h4>
+<p>장점만 있고 단점이 없다면, <code>UUID</code>를 사용하는게 더 일반적이었을 것이다.<br>
+<code>UUID</code>를 사용할 때의 단점은 무엇이 있을까?</p>
+<h5 id="무작위-값으로-인한-인덱스-효율-감소">무작위 값으로 인한 인덱스 효율 감소</h5>
+<p>순차적으로 값이 증가하는 <code>AUTO INCREMENT</code>와 달리, <code>UUID</code>는 완전히 무작위 값으로 생성된다.</p>
+<p>대부분의 RDBMS는 B+Tree 구조로 인덱스를 관리하는데, B+Tree는 삽입할 값이 순차적으로 증가할 때 효율적이다.</p>
+<ul>
+<li>값이 순차적이라면, B+Tree의 가장 오른쪽에 새 값을 쌓으면 된다.</li>
+<li>값이 무작위라면, 새로운 데이터가 기존 인덱스 페이지를 비집고 들어가니, 페이지 분할이 자주 발생해 성능이 하락한다.</li>
+</ul>
+<p>이 문제를 완화하고자, <code>UUID v7</code>을 사용할 수 있다.<br>
+<code>UUID v7</code>은 앞부분에 타임스탬프를 포함하므로, <strong>생성 시점에 따라 어느 정도 정렬된 순서</strong>를 지니게 된다.</p>
+<h5 id="추가적인-저장-공간-요구">추가적인 저장 공간 요구</h5>
+<p>8바이트로 저장되는 <code>BIGINT</code>와 달리, <code>UUID</code>는 (<code>CHAR</code>로 저장할 경우) 36바이트의 저장 공간을 요구한다.<br>
+이로 인해 PK 및 FK를 저장하기 위한 공간이 더 필요해질 뿐 아니라, 인덱스 B+Tree의 한 페이지에 담을 수 있는 키 개수를 줄여 인덱스 효율이 떨어진다.</p>
+<p>이 문제를 완화하고자, <code>UUID</code>를 <code>CHAR</code> 대신 <code>BINARY</code> 혹은 <code>UUID</code> 자료형으로 저장할 수 있다.<br>
+이 경우, 16바이트의 공간만으로 저장할 수 있다.</p>

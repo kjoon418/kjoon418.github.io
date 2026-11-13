@@ -1,0 +1,33 @@
+<!--
+{
+  "title": "전역 예외를 쉽게 처리해보자",
+  "summary": "@RestControllerAdvice, @ExceptionHandler",
+  "date": "2025-07-28T10:52:27.345Z",
+  "category": "tech",
+  "cover": "/assets/velog/9fdd15a699ca9e705286.png",
+  "coverAlt": "전역 예외를 쉽게 처리해보자"
+}
+-->
+<h2 id="예외를-처리해보자">예외를 처리해보자</h2>
+<p><img src="/assets/velog/9fdd15a699ca9e705286.png" alt="" loading="lazy"><br>
+Spring Security를 사용해본 사람은 모두 알 것이다.<br>
+모든 예외에 403 응답이 나가는 공포... 클라이언트에서 버그가 터지면 원인을 찾아 발로 뛰는 불편함...</p>
+<p>나는 Spring에서 전역 예외도 어노태이션으로 추상화 해뒀을 거라고 생각했고, 너무나 당연하게도 존재했다.</p>
+<h2 id="어떻게">어떻게?</h2>
+<pre><code class="language-java">@RestControllerAdvice
+@Slf4j
+public class GlobalExceptionHandler {
+
+	@ExceptionHandler(NoHandlerFoundException.class)
+    public ResponseEntity&lt;String&gt; handleNotFound(NoHandlerFoundException exception) {
+        log.trace(&quot;[ERROR RESPONSE] handleNotFound&quot;, exception);
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(&quot;존재하지 않는 엔드포인트입니다&quot;);
+    }
+&#32;&#32;&#32;&#32;
+}</code></pre>
+<p><code>@ControllerAdvice</code>와 <code>@ExceptionHandler</code>를 조합해보자.</p>
+<p><code>@ExceptionHadnler</code>는 특정 예외가 발생할 경우 호출되는 메서드를 지정한다.<br>
+<code>@ControllerAdvice</code>는 <code>@ExceptionHadnler</code>와 같은 로직이 모든 컨트롤러에 적용되도록 한다.</p>
+<p>즉, 위 예시에서는 모든 컨트롤러 단에서 <code>NoHandlerFoundException</code>이 발생시 <code>handleNotFound</code> 메서드를 호출하고, HTTP 응답으로 <code>handleNotFound</code> 메서드의 반환 값을 전달한다.</p>
+<p><code>@ControllerAdvice</code> 대신 <code>@RestControllerAdvice</code>를 사용하면, 반환값을 자동으로 JSON/XML 형태로 직렬화해준다.</p>

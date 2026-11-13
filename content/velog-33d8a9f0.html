@@ -1,0 +1,524 @@
+<!--
+{
+  "title": "Kotlin Generic A to Z",
+  "summary": "Kotlin의 제네릭에 대해 이해해보자",
+  "date": "2025-11-22T08:00:53.180Z",
+  "category": "tech",
+  "cover": "/assets/velog/7c8360c78760157e2604.png",
+  "coverAlt": "Kotlin Generic A to Z"
+}
+-->
+<h3 id="개요">개요</h3>
+<img src="/assets/velog/57d72005c93a7a60b953.png" alt="" loading="lazy">
+<p>우테코 프리코스 미션으로 &quot;나만의 프레임워크 만들기&quot;를 시도했는데, 제네릭을 적극적으로 도입하며 구현하는 과정에서 <strong>공변</strong>, <strong>무공변</strong>, <strong>반공변</strong>이라는 개념을 만났다.</p>
+<p>일단 도입해서 구현은 성공적으로 마무리 지었지만, 제네릭을 완벽히 이해했다고 자신만만해하던 내가 부끄러워 다시 정리하며 제대로 공부해보고자 한다.</p>
+<p>공변, 무공변, 반공변 뿐 아니라, 제네릭의 기초부터 심화까지 모두 살펴보도록 하자.</p>
+<hr>
+<h3 id="타입-파라미터란">타입 파라미터란?</h3>
+<pre><code class="language-kotlin">// 여기서 T를 '타입 파라미터'라고 부른다!
+class Hello&lt;T&gt; {
+	fun hi(t: T) {
+		println(t)
+	}
+}</code></pre>
+<p>제네릭을 본격적으로 배우기 전, 앞으로 가장 많이 마주칠 단어의 뜻을 알아보고 가자.</p>
+<p>제네릭의 타입을 지정하는 파라미터를 <strong>타입 파라미터</strong>라고 부른다.<br>
+대문자 1개를 사용하는 것이 관례이며, 타입 파라미터를 지닌 클래스를 <strong>제네릭 클래스</strong>라고 한다.</p>
+<hr>
+<h3 id="제네릭의-장점">제네릭의 장점</h3>
+<h4 id="1-제네릭을-사용하지-않을-때의-문제점">1. 제네릭을 사용하지 않을 때의 문제점</h4>
+<h5 id="1-1-객체의-타입을-고정하는-경우">1-1. 객체의 타입을 고정하는 경우</h5>
+<pre><code class="language-kotlin">// Fish에 대해서는 잘 동작한다
+val fishes = FishList()
+val fish: Fish = fishes.first()
+
+// 하지만 필요한 모든 타입에 대해서 같은 기능을 구현해야 한다
+val cats = CatList()
+val cat: Cat = cats.first()</code></pre>
+<p><code>Fish</code>에 대한 리스트가 필요해서 <code>FishList</code>를 만들었다.</p>
+<p><code>Fish</code>에 대해서는 아주 잘 동작하지만, 만약 똑같은 기능이 <code>Cat</code>에도 필요하다면 어떨까?<br>
+<code>FishList</code>는 오직 <code>Fish</code>를 위해서만 존재하므로, 필요한 기능은 똑같더라도 별도의 객체인 <code>CatList</code>를 또 만들어야 할 것이다.</p>
+<h5 id="1-2-any를-사용하는-경우">1-2. Any를 사용하는 경우</h5>
+<pre><code class="language-kotlin">// Any를 사용할 경우
+val fishes = AnyList()
+val cats = AnyList()
+
+// 모두 캐스팅해서 사용해야 한다
+val fish: Fish = fishes.first() as Fish
+val cat: Cat = cats.first() as Cat
+
+// 심지어 이런 실수도 컴파일 단계에서 파악할 수 없다
+fishes.add(cat)</code></pre>
+<p>여러 객체에 대해 같은 기능을 재활용하고 싶어서 <code>AnyList</code>를 만들었다.</p>
+<p>위와 같이 <code>AnyList</code>라는 클래스 하나를 <code>fishes</code>, <code>cats</code>처럼 여러 상황에 활용 가능하다.</p>
+<p>단, 다음과 같은 문제가 있다.</p>
+<ol>
+<li>타입을 <strong>캐스팅</strong>해서 사용해야 한다<ul>
+<li>리스트에서 값을 꺼낼 때 항상 <code>fishes.first() as Fish</code>처럼 타입을 캐스팅해서 사용해야 한다.</li>
+<li>번거로울 뿐 아니라, 해당 인스턴스의 타입이 부적절할 수 있다는 위험을 항상 감수해야 한다.</li>
+</ul></li>
+<li>잘못된 타입을 사용하더라도, <strong>컴파일 단계에서 알 수 없다</strong><ul>
+<li><code>Fish</code>와 <code>Cat</code>은 모두 <code>Any</code>로 추상화할 수 있다.</li>
+<li>그렇기 때문에, <code>fishes</code>에 <code>cat</code>을 추가한다고 해서 컴파일러는 아무 경고나 조치를 취하지 않는다.</li>
+<li>추후에 <code>fishes.first() as Fish</code> 코드가 실행될 때에서야 문제를 파악할 수 있을 것이다.</li>
+</ul></li>
+</ol>
+<h4 id="2-제네릭을-사용해-해결하자">2. 제네릭을 사용해 해결하자</h4>
+<pre><code class="language-kotlin">val fishes = List&lt;Fish&gt;()
+val cats = List&lt;Cat&gt;()
+
+val fish: Fish = fishes.first()
+val cat: Cat = cats.first()
+
+// 다음과 같은 잘못된 코드는 컴파일러가 잡아준다
+fishes.add(cat)</code></pre>
+<p>제네릭을 도입하면, 위에서 언급한 문제를 모두 해결하면서도 객체를 유연하게 만들 수 있다.</p>
+<ol>
+<li>객체의 유연성<ul>
+<li>하나의 <code>List&lt;T&gt;</code> 객체를 <code>fishes</code>, <code>cats</code> 등 여러 상황에 활용할 수 있다.</li>
+</ul></li>
+<li>타입 캐스팅<ul>
+<li><code>fishes</code>는 <code>List&lt;Fish&gt;</code>이고, <code>cats</code>는 <code>List&lt;Cat&gt;</code>이다.</li>
+<li>각각 상황에 맞는 타입이 규정되어 있기 때문에, 값을 꺼낼 때도 캐스팅할 필요 없고, 잘못된 값을 넣는 실수는 컴파일러가 바로 잡아준다.</li>
+</ul></li>
+</ol>
+<hr>
+<h3 id="상속관계와-제네릭">상속관계와 제네릭</h3>
+<h4 id="1-제네릭을-사용하지-않고-구현해보자">1. 제네릭을 사용하지 않고 구현해보자</h4>
+<pre><code class="language-kotlin">class Fish : Animal { ... }
+class Cat : Animal { ... }</code></pre>
+<p>사실 Cat과 Fish는 모두 Animal의 구현체들이었다.<br>
+그렇다면 제네릭 없이도 아래처럼 해결할 수 있지 않을까?</p>
+<pre><code class="language-kotlin">val fishes = AnimalList()
+val cats = AnimalList()
+
+// 앗 Any를 사용할 때랑 똑같네...
+val fish: Fish = fishes.first() as Fish
+val cat: Cat = cats.first() as Cat
+fishes.add(cat) // 실수가 발생해도 컴파일러가 막지 못한다
+
+// 그래도 해당 객체를 Animal만 사용할 수 있게 강제할 수 있다
+val number: Int = 5
+fishes.add(number) // 컴파일러가 막아준다!</code></pre>
+<p><code>AnyList</code>때 보단 낫지만, 여전히 비슷한 문제가 존재한다.</p>
+<p>하지만, 해당 객체를 <code>Animal</code>과 그 하위 타입만 사용하도록 제한할 수 있게 되었다.<br>
+제네릭으로는 이런 걸 못하지 않을까?</p>
+<h4 id="2-제네릭으로-해결해보자">2. 제네릭으로 해결해보자</h4>
+<pre><code class="language-kotlin">// T는 Animal이거나 그 하위 타입이어야 한다
+class List&lt;T : Animal&gt; { ... }
+
+val fishes = List&lt;Fish&gt;()
+val cats = List&lt;Cat&gt;()
+
+// 컴파일러가 다 잡아준다
+fishes.add(cat)
+fishes.add(5)</code></pre>
+<p>당연히 된다.<br>
+이를 <strong>제네릭 제약</strong>이라고 부른다.<br>
+(제네릭 제약에 대해서는 뒤에서 자세하게 알아보자)</p>
+<p>타입 파라미터를 <code>&lt;T : 타입&gt;</code>처럼 선언하면, 제네릭 타입 <code>T</code>를 <code>타입</code>과 그 하위 타입만으로 제한할 수 있다.</p>
+<pre><code class="language-kotlin">interface Animal {
+    fun run()
+}
+
+class List&lt;T : Animal&gt; {
+    private val animals = mutableListOf&lt;T&gt;()
+&#32;&#32;&#32;&#32;
+    fun runEveryAnimals() {
+        for (t: T in animals) {
+            // T이지만 Animal의 메서드에 접근 가능하다!
+            t.run()
+        }
+    }
+}</code></pre>
+<p>또한, 위와 같은 경우 <code>T</code>는 항상 <code>Animal</code> 혹은 그 하위 타입이니, <code>T</code>가 <code>Animal</code>의 메서드와 속성을 사용하는 것도 가능하다.</p>
+<hr>
+<h3 id="제네릭과-무공변-공변-반공변">제네릭과 무공변, 공변, 반공변</h3>
+<h4 id="1-일반적인-상속-관계">1. 일반적인 상속 관계</h4>
+<pre><code class="language-kotlin">val cat: Cat = Cat()
+
+// 상위 타입인 Animal 변수에 Cat 인스턴스를 대입할 수 있다
+val animal: Animal = cat
+
+// 상속 관계가 없으니 대입할 수 없다
+val animal: Animal = 5 // Animal에 Int를 대입할 수 없다</code></pre>
+<p>객체 간 상속관계가 있다면, 위와 같이 하위 타입 인스턴스는 상위 타입으로 취급할 수 있다.<br>
+제네릭에서는 이런 상속 관계를 어떻게 처리할까?</p>
+<h4 id="2-무공변invariance">2. 무공변(invariance)</h4>
+<p>(불공변이라고도 부른다)</p>
+<h5 id="2-1-무공변이란">2-1. 무공변이란?</h5>
+<pre><code class="language-kotlin">class List&lt;T&gt; { ... }
+
+val cats: List&lt;T&gt; = List()
+val animals: List&lt;Animal&gt; = cats // 컴파일 에러가 발생한다</code></pre>
+<p><code>Cat</code>과 <code>Animal</code> 간 상속 관계가 있더라도, 위와 같이 <code>List&lt;Cat&gt;</code>과 <code>List&lt;Animal&gt;</code>은 완전히 서로 다른 타입으로 취급된다.<br>
+이를 <strong>무공변하다</strong>라고 한다.</p>
+<p>또한, Kotlin의 제네릭은 기본적으로 무공변으로 동작한다</p>
+<h5 id="2-2-왜-무공변할까">2-2. 왜 무공변할까?</h5>
+<pre><code class="language-java">Cat[] cats = new Cat[5];
+
+// Cat[]이 Animal[]에 문제 없이 잘 대입된다
+Animal[] animals = cats;</code></pre>
+<p>Kotlin의 제네릭이 무공변을 선택한 이유를 알기 위해선, 공변한 것의 문제를 먼저 이해해야 한다.</p>
+<p>이를 위해 Java 배열 예시를 살펴보자.<br>
+Java 배열은 <code>Animal[]</code> 변수에 <code>Cat[]</code> 인스턴스를 대입할 수 있다.</p>
+<p><code>Animal</code>과 <code>Cat</code>의 상속 관계가 <code>Animal[]</code>과 <code>Cat[]</code>에도 반영되는 이런 특징을 <strong>공변(co-variant)하다</strong> 라고 한다.</p>
+<pre><code class="language-java">Cat[] cats = new Cat[5];
+Animal[] animals = cats;
+
+// 컴파일 상으론 문제가 없지만, 런타임에 실제로 대입할 때 문제가 발생한다
+animals[0] = new Fish();</code></pre>
+<p>공변한 배열은 위와 같은 문제를 지닌다</p>
+<p>컴파일러 상으로는 <code>Animal</code> 배열에 <code>Fish</code>를 삽입하는 것이므로 통과되지만, 실제 런타임 시에는 <code>Cat</code> 배열에 <code>Fish</code>를 삽입하는 것이 되기 때문이다</p>
+<ul>
+<li>실제 대입 시 <code>ArrayStoreException</code>이 발생한다</li>
+<li>즉, <strong>문제가 컴파일 시에 잡히지 않고 런타임 시점에 잡힌다</strong></li>
+</ul>
+<pre><code class="language-java">List&lt;Cat&gt; cats = List.of(cat1, cat2, cat3);
+List&lt;Animal&gt; animals = cats; // 컴파일 에러가 발생한다</code></pre>
+<p>이런 문제 때문에, Java의 제네릭 역시 무공변하다</p>
+<p>즉, 위와 같은 코드에서 컴파일 에러가 발생한다</p>
+<h4 id="3-공변co-variant">3. 공변(<strong>co-variant)</strong></h4>
+<h5 id="3-1-공변해도-괜찮은-상황">3-1. 공변해도 괜찮은 상황</h5>
+<pre><code class="language-kotlin">class List&lt;T : Animal&gt; {
+    private val elements = mutableListOf&lt;T&gt;()
+
+    fun addAll(other: List&lt;T&gt;) {
+        for (element: T in other.elements) {
+            elements.add(element)
+        }
+    }
+}
+
+// 이 코드가 문제가 될까?
+val cats: List&lt;Cat&gt; = List()
+val animals: List&lt;Animal&gt; = List()
+
+animals.addAll(cats) // 문제가 없음에도 컴파일 에러가 발생한다</code></pre>
+<p>위와 같이 <code>List</code>에 또 다른 <code>List&lt;T&gt;</code>를 파라미터로 받는 <code>addAll</code> 메서드가 존재한다고 가정해보자.<br>
+과연 <code>animals.addAll(cats)</code> 코드가 문제가 될까?</p>
+<ul>
+<li><code>Cat</code>은 <code>Animal</code>의 하위 타입이므로, <code>List&lt;Animal&gt;</code>에 <code>Cat</code> 원소들을 삽입한다고 해서 아무 문제도 발생하지 않을 것이다.</li>
+<li>하지만 제네릭은 무공변하기 때문에, 위 코드에서 컴파일 에러가 발생하게 된다.</li>
+</ul>
+<p>제네릭을 공변하게 사용할 순 없을까?</p>
+<h5 id="3-2-공변하게-만들어보자">3-2. 공변하게 만들어보자</h5>
+<pre><code class="language-kotlin">class List&lt;T : Animal&gt; {
+    fun addAll(other: List&lt;out T&gt;) {
+        // ...
+    }
+}
+
+val cats: List&lt;Cat&gt; = List()
+val animals: List&lt;Animal&gt; = List()
+animals.addAll(cats) // 컴파일 에러가 발생하지 않는다</code></pre>
+<p>방법은 간단하다.<br>
+타입 파라미터에 <code>out</code> 키워드를 붙여주는 것으로 공변하게 만들 수 있다.</p>
+<ul>
+<li>이렇게 공변하게 만드는 것을 ‘<strong>변성을 준다</strong>’라고도 표현한다.<br>
+(변성을 준다는 것은, ‘공변을 주는 것’과 ‘반공변을 주는 것’을 포함하는 개념이다)<br>
+</li>
+</ul>
+<p><code>out</code>은 변성을 주는 키워드이므로, 이런 키워드를 <strong>variance annotation</strong>이라고도 부른다.</p>
+<h5 id="3-3-out의-의미">3-3. out의 의미</h5>
+<pre><code class="language-kotlin">class List&lt;T : Animal&gt; {
+    private val elements = mutableListOf&lt;T&gt;()
+
+    fun addAll(other: List&lt;out T&gt;) {
+        // 데이터를 꺼내는 것은 괜찮다
+        val data: T = other.first()
+
+        // 데이터를 넣는 것은 컴파일 에러가 발생한다
+        for (element: T in elements) {
+            other.elements.add(element)
+        }
+    }
+
+    fun first(): T {
+        return elements.first()
+    }
+}</code></pre>
+<p><code>out</code>이란 것은, 해당 제네릭에서 데이터를 꺼내는 것만 가능하다는 의미이다.<br>
+이를 다른 말로, 해당 제네릭은 <strong>생산자 역할</strong>만 할 수 있다고도 한다.</p>
+<p>왜 <code>out</code>을 붙이면 소비자 역할을 하지 못하게 막을까?</p>
+<pre><code class="language-kotlin">class List&lt;T : Animal&gt; {
+	private val elements = mutableListOf&lt;T&gt;()
+&#9;&#9;
+    fun addAll(other: List&lt;out T&gt;) {
+        for (element: T in elements) {
+            other.elements.add(element)
+        }
+    }
+}
+
+val cats: List&lt;Cat&gt; = List()
+val animals: List&lt;Animal&gt; = List()
+
+animals.addAll(cats) // List&lt;Cat&gt;에 List&lt;Animal&gt;의 원소들이 삽입된다!</code></pre>
+<p>소비자 역할이 가능하다면 어떤 일이 벌어질지 생각해보자.</p>
+<p>위와 같이 하위 타입인 <code>Cat</code> 리스트에 <code>Animal</code> 원소가 삽입될 수 있게 된다.<br>
+즉, 타입 안정성이 깨지게 되어 런타임 에러가 발생할 것이다.</p>
+<p>이런 이유 때문에 <code>out</code>을 붙이면 소비자 역할만 가능하도록 제한한다.</p>
+<h4 id="4-반공변contravariance">4. 반공변(<strong>contravariance)</strong></h4>
+<h5 id="4-1-반공변이란">4-1. 반공변이란?</h5>
+<pre><code class="language-kotlin">val animals: List&lt;Animal&gt; = List()
+val cats: List&lt;Cat&gt; = animals</code></pre>
+<p>타입의 상속 관계를 반대로 적용했다 생각하면 된다.<br>
+(또한, 공변의 반대 개념이다)</p>
+<p>위와 같이 상위 타입을 하위 타입으로 취급할 수 있는 것을 <strong>반공변하다</strong>라고 표현한다.</p>
+<h5 id="4-1-반공변해도-괜찮은-상황">4-1. 반공변해도 괜찮은 상황</h5>
+<pre><code class="language-kotlin">class List&lt;T : Animal&gt; {
+    private val elements = mutableListOf&lt;T&gt;()
+
+    fun addAllTo(other: List&lt;T&gt;) {
+        for (element in elements) {
+            other.elements.add(element)
+        }
+    }
+}
+
+val cats: List&lt;Cat&gt; = List()
+val animals: List&lt;Animal&gt; = List()
+
+cats.addAllTo(animals) // 문제가 없음에도 컴파일 에러가 발생한다</code></pre>
+<p>위의 경우, <code>List&lt;Cat&gt;</code>의 원소를 <code>List&lt;Animal&gt;</code>에 삽입하는 것이므로, 아무 문제도 발생하지 않을 것이다.</p>
+<p>하지만 Kotlin의 제네릭은 무공변하므로, <code>List&lt;Cat&gt;</code>의 <code>addAllTo</code>에 <code>List&lt;Cat&gt;</code>이 아닌 다른 타입을 전달할 수 없다.</p>
+<h4 id="4-2-반공변하게-만들자">4-2. 반공변하게 만들자</h4>
+<pre><code class="language-kotlin">class List&lt;T : Animal&gt; {
+    private val elements = mutableListOf&lt;T&gt;()
+
+    fun addAllTo(other: List&lt;in T&gt;) {
+        for (element in elements) {
+            other.elements.add(element)
+        }
+    }
+}
+
+val cats: List&lt;Cat&gt; = List()
+val animals: List&lt;Animal&gt; = List()
+
+cats.addAllTo(animals) // 잘 동작한다!</code></pre>
+<p><code>out</code> 키워드와 반대로, <code>in</code> 키워드를 사용하면 반공변하게 만들 수 있다</p>
+<p>이렇게 <code>in</code> 키워드가 붙을 경우, 해당 제네릭 인스턴스는 <strong>소비자 역할</strong>만 할 수 있다.</p>
+<p>해당 제네릭 인스턴스는 소비자 역할만 하므로, 동일 타입 혹은 더 상위 타입이야 한다.</p>
+<hr>
+<h3 id="선언-지점-변성과-사용-지점-변성">선언 지점 변성과 사용 지점 변성</h3>
+<h4 id="1-선언-지점-변성declaration-site-variance이란">1. 선언 지점 변성(Declaration-site Variance)이란?</h4>
+<pre><code class="language-kotlin">// 클래스 선언 시점에 변성을 지정했다
+class List&lt;out T&gt; { /* ... */ }</code></pre>
+<p>클래스 혹은 인터페이스를 <strong>선언하는 시점</strong>에 <code>out</code>이나 <code>in</code> 키워드를 붙여 변성을 지정하는 방식이다.<br>
+즉, 제네릭 클래스 자체를 공변하게 만드는 방식이다.</p>
+<p>Java에서는 불가능하고, Kotlin의 제네릭만이 지니고 있는 특징이다.</p>
+<h4 id="2-사용-지점-변성use-site-variance이란">2. 사용 지점 변성(Use-site Variance)이란?</h4>
+<pre><code class="language-kotlin">class List&lt;T&gt; { /* ... */ }
+
+// 변수 사용 시점에 변성을 지정했다
+val animals: List&lt;out Animal&gt; = List()</code></pre>
+<p>클래스 혹은 인터페이스 선언 시점에는 변성이 지정되지 않았지만, 특정 <strong>함수나 변수에서 사용할 때</strong> 변성을 부여하는 방식이다.</p>
+<p>Java의 와일드카드(<code>&lt;? extends …&gt;</code>, <code>&lt;? super …&gt;</code>)가 사용 지점 변성 방식에 해당한다.</p>
+<ul>
+<li>참고로, <code>&lt;out T&gt;</code>가 <code>&lt;? extends T&gt;</code>와 대응되고, <code>&lt;in T&gt;</code>가 <code>&lt;? super T&gt;</code>와 대응된다.</li>
+</ul>
+<h4 id="3-선언-지점-변성을-사용하려면">3. 선언 지점 변성을 사용하려면?</h4>
+<h5 id="3-1-생산만-하는-클래스는-공변하게-만들-수-있다">3-1. 생산만 하는 클래스는 공변하게 만들 수 있다</h5>
+<pre><code class="language-kotlin">// UnmodifiableList는 생산만 한다
+class UnmodifiableList&lt;out T&gt; {
+    private val elements = listOf&lt;T&gt;()
+&#32;&#32;&#32;&#32;
+    fun first(): T {
+        return elements.first()
+    }
+&#32;&#32;&#32;&#32;
+    fun all(): List&lt;T&gt; {
+        return elements
+    }
+}
+
+// UnmodifiableList&lt;Animal&gt;이 Cat을 생산할 수 있다!
+val cats = UnmodifiableList&lt;Cat&gt;(listOf(cat1, cat2, cat3))
+val animals: UnmodifiableList&lt;Animal&gt; = cats // &lt;Animal&gt;에 &lt;Cat&gt;을 대입 가능하다
+val first: Animal = animals.first() // 실제로는 Cat 인스턴스를 생산한다</code></pre>
+<p>어떤 제네릭 클래스(혹은 인터페이스)가 오직 생산만 한다면, 그 클래스는 공변해도 문제가 없을 것이다.</p>
+<p>이 경우, 클래스의 타입 파라미터 선언에 <code>out</code> 키워드를 붙여서 클래스 자체를 공변하게 만들 수 있다.</p>
+<h5 id="3-2-소비만-하는-클래스는-반공변하게-만들-수-있다">3-2. 소비만 하는 클래스는 반공변하게 만들 수 있다</h5>
+<pre><code class="language-kotlin">// Printer는 소비만 한다
+class Printer&lt;in T&gt; {
+    fun print(value: T) {
+        println(&quot;value = $value&quot;)
+    }
+}
+
+// Printer&lt;Animal&gt;이 Cat을 소비할 수 있다!
+val cat: Cat = Cat()
+val animalPrinter: Printer&lt;Animal&gt; = Printer()
+val catPrinter: Printer&lt;Cat&gt; = animalPrinter // &lt;Cat&gt;에 &lt;Animal&gt;을 대입 가능하다
+
+catPrinter.print(cat) // 실제 인스턴스는 Printer&lt;Animal&gt;이지만 Cat을 소비할 수 있다</code></pre>
+<p>반대로 오직 소비만 하는 제네릭 클래스(혹은 인터페이스)가 있다면, 그 클래스는 반공변해도 문제가 없을 것이다.</p>
+<p>똑같이 클래스의 타입 파라미터 선언에 <code>in</code> 키워드를 붙여서 클래스 자체를 반공변하게 만들 수 있다.</p>
+<h4 id="4-unsafevariance">4. UnsafeVariance</h4>
+<pre><code class="language-kotlin">class UnmodifiableList&lt;out T&gt;(
+    private val elements: List&lt;T&gt;
+) {
+    // T 파라미터를 받을 수 없어야 하지만, 애노태이션을 통해 허용한다
+    fun contains(element: @UnsafeVariance T): Boolean {
+        // 어차피 단순 비교만 수행하므로, 다른 타입이 들어오더라도 안전하다
+        return elements.contains(element)
+    }
+}
+
+// 정말 타입 안전한 상황이라면, 공변한 제네릭 클래스가 소비도 가능하도록 허용할 수 있다
+val cats: UnmodifiableList&lt;Cat&gt; = UnmodifiableList(listOf(cat1, cat2, cat3))
+val animals: UnmodifiableList&lt;Animal&gt; = cats
+
+animals.contains(cat1) // UnmodifiableList가 무언가를 소비하고 있다</code></pre>
+<p>생산자 역할을 하는 클래스지만, 위의 <code>contains</code> 메서드처럼 다른 타입이 들어와도 문제 없이 처리할 수 있는 경우도 있다.<br>
+즉, 소비할 때 타입 안전한 경우가 존재한다.</p>
+<p>이럴 때는 파라미터에 <code>@UnsafeVariance</code>를 붙여 소비가 가능하도록 허용할 수 있다.</p>
+<ul>
+<li>당연히, 이 경우 해당 로직이 타입 안전함을 개발자가 보장해야 한다.</li>
+</ul>
+<hr>
+<h3 id="제네릭-제약generic-constraints">제네릭 제약(Generic Constraints)</h3>
+<h4 id="1-제네릭-제약이란">1. 제네릭 제약이란?</h4>
+<pre><code class="language-kotlin">class Container&lt;T : Animal&gt;(
+    private val value: T
+)
+
+// Cat과 Animal은 되지만, Int를 넣으려 하면 컴파일 에러가 발생한다!
+val cat: Cat = Cat()
+val animal: Animal = Animal()
+val number: Int = 5
+
+val catContainer: Container&lt;Cat&gt; = Container(cat)
+val animalContainer: Container&lt;Animal&gt; = Container(animal)
+val numberContainer: Container&lt;Int&gt; = Container(number) // 컴파일 에러 발생</code></pre>
+<p>제네릭 타입에 특정 타입과 그 하위 타입들만 사용할 수 있도록 제한하는 것을 말한다.</p>
+<p>상속 문법과 같이, <code>&lt;타입_파라미터 : 타입&gt;</code> 형식으로 선언할 수 있다.</p>
+<h4 id="2-제네릭-제약-여러-개-두기">2. 제네릭 제약 여러 개 두기</h4>
+<pre><code class="language-kotlin">// Comparable을 구현한 Animal 및 하위 타입으로 제한한다
+class AnimalSorter&lt;T&gt; where T : Animal, T : Comparable&lt;T&gt; {
+    fun sort(vararg animals: T): List&lt;T&gt; {
+        return animals.sorted()
+    }
+}
+
+// 함수에도 적용할 수 있다
+class AnimalSorter {
+    fun &lt;T&gt; sort(vararg animals: T): List&lt;T&gt; where T : Animal, T : Comparable&lt;T&gt; {
+        return animals.sorted()
+    }
+}</code></pre>
+<p>제네릭 타입에 대해 한 번에 여러 제약조건을 걸고 싶을 수도 있다.</p>
+<p>그럴 때는 위와 같이 <code>where</code> 키워드를 사용하고 제약조건들을 쉼표(<code>,</code>)로 구분해주면 된다.</p>
+<h4 id="3-제네릭-제약으로-null-막기">3. 제네릭 제약으로 null 막기</h4>
+<pre><code class="language-kotlin">// 아무 제약조건도 지정하지 않으면, Any?처럼 모든 타입이 올 수 있게 된다
+class List&lt;T&gt; { }
+
+val cats: List&lt;Cat?&gt; = List()
+
+// 타입 제한은 없되 null을 불허하고 싶다면 Any로 제한해주자
+class List&lt;T : Any&gt; { }
+
+val cats: List&lt;Cat?&gt; = List() // 컴파일 에러가 발생한다</code></pre>
+<p>제네릭 타입에 아무 제약도 걸지 않으면, <code>Any?</code> 타입에 대입될 수 있는 모든 타입을 사용할 수 있게 된다.<br>
+즉, null을 허용하게 된다.</p>
+<p>만일 타입에 제한을 두고싶진 않지만 null을 허용하면 안될 경우엔, <code>&lt;T : Any&gt;</code>처럼 제약해주자.</p>
+<hr>
+<h3 id="타입-소거">타입 소거</h3>
+<h4 id="1-타입-소거란">1. 타입 소거란?</h4>
+<pre><code class="language-kotlin">fun Any.isIntList(): Boolean {
+	// 타입 소거로 인해 List&lt;Int&gt;인지 비교 자체가 불가능하다
+	return this is List&lt;Int&gt;
+}</code></pre>
+<p>Kotlin 역시 JVM 위에서 동작하기 때문에, Java 제네릭의 타입 소거가 똑같이 적용된다.<br>
+즉, 런타임 때는 제네릭의 타입 정보가 사라진다.</p>
+<p>때문에, 위와 같이 런타임 때 제네릭 타입(<code>&lt;Int&gt;</code>)에 접근할 수 없어 컴파일 에러가 발생한다.</p>
+<h4 id="2-star-projection">2. Star Projection</h4>
+<pre><code class="language-kotlin">// List인지 알아내는 것은 가능하다
+fun Any.isList(): Boolean {
+	return this is List&lt;*&gt;
+}</code></pre>
+<p>하지만, 소거되는 것은 제네릭 타입 뿐이니, 클래스/인터페이스 자체의 타입 정보는 가져올 수 있다.</p>
+<p>이럴 때 제네릭 타입은 <code>*</code>로 명시하면 되는데, 이를 <strong>Star Projection</strong>이라고 한다.</p>
+<ul>
+<li>Star Projection은 어떤 타입이든 상관없다는 것을 의미한다.</li>
+</ul>
+<pre><code class="language-kotlin">// 안에 어떤 데이터가 있는지 모르니 Any?로 가져온다
+fun List&lt;*&gt;.first(): Any? {
+	return this[0]
+}
+
+// 데이터를 소비하게 만들 수는 없다
+fun MutableList&lt;*&gt;.put(value: Any?) {
+	return this.add(value) // 컴파일 에러가 발생한다
+}</code></pre>
+<p>이 때 제네릭 타입이 무엇인지 모르니, 데이터를 꺼낼 땐 <code>Any?</code>로 취급한다.</p>
+<p>어떤 데이터를 사용하는지 모르니, 데이터를 소비하게 만들 수는 없다.</p>
+<pre><code class="language-kotlin">fun Collection&lt;String&gt;.isMutable(): Boolean {
+    return this is MutableList&lt;String&gt;
+}</code></pre>
+<p>단, Kotlin 컴파일러는 타입 추론 기능을 제공하므로, 위와 같은 코드는 컴파일 에러가 발생하지 않는다.</p>
+<h4 id="3-inline-reified로-타입-정보-얻기">3. inline reified로 타입 정보 얻기</h4>
+<pre><code class="language-kotlin">// T에 대한 정보를 알 수 없으니 컴파일 에러가 발생한다
+fun &lt;T&gt; List&lt;*&gt;.hasInstanceOf(): Boolean {
+	return this.any { it is T }
+}&#32;
+
+// 컴파일 에러가 발생하지 않는다
+inline fun &lt;reified T&gt; List&lt;*&gt;.hasInstanceOf(): Boolean {
+	return this.any { it is T }
+}</code></pre>
+<p><code>inline</code>과 <code>reified</code> 키워드를 같이 사용하면, 함수가 제네릭 타입을 알 수 있도록 만든다.</p>
+<p>각 키워드는 다음과 같은 역할을 한다.</p>
+<ol>
+<li><code>inline</code><ul>
+<li>컴파일 될 때, 함수의 코드를 호출한 위치에 그대로 복사해 붙여넣도록 만든다.</li>
+<li>즉, 실제 컴파일된 코드에서는 함수를 호출하는 형태로 동작하지 않고, 복사된 코드를 그대로 실행하게 된다.</li>
+</ul></li>
+<li><code>reified</code><ul>
+<li><code>inline</code>을 통해 함수를 붙여넣을 때, 제네릭 타입 T를 호출할 때 사용된 진짜 타입 클래스로 바꿔치기하게 만든다.</li>
+<li>즉, 제네릭 타입(<code>T</code>)이, 런타임에 접근 가능한 실제 클래스로 변환되어 코드에 작성된다.</li>
+</ul></li>
+</ol>
+<pre><code class="language-kotlin">// 이렇게 정의한 함수가 있을 때, 컴파일은 아래처럼 이루어진다
+inline fun &lt;reified T&gt; List&lt;*&gt;.hasInstanceOf(): Boolean {
+		return this.any { it is T }
+}
+
+// 1. 컴파일 전
+val list = listOf(1, &quot;Hi&quot;, true)
+val result = list.hasInstanceOf&lt;Int&gt;()
+
+// 2. 컴파일 후(만일 reified를 사용하지 않았다면)
+val list = listOf(1, &quot;Hi&quot;, true)
+val result = list.any { it is T } // 런타임 때 T에 대한 정보는 없어지니 컴파일이 불가능하다
+
+// 3. 컴파일 후(inline과 reified를 같이 사용한 경우)
+val list = listOf(1, &quot;Hi&quot;, true)
+val result = list.any { it is Int } // 제네릭 타입에 대한 정보가 실제 클래스로 치환된다</code></pre>
+<p><code>inline</code>과 <code>reified</code>를 사용하면, 위와 같은 과정을 거쳐 컴파일되므로 제네릭 타입의 타입 정보를 알아낼 수 있게 된다.</p>
+<hr>
+<h3 id="제네릭과-쉐도잉">제네릭과 쉐도잉</h3>
+<pre><code class="language-kotlin">class Printer&lt;in T&gt; {
+    // 이 함수에 선언된 T는 클래스에 선언된 T를 쉐도잉한다
+    fun &lt;T&gt; print(value: T) {
+        println(&quot;value = $value&quot;)
+    }
+}
+
+// 지역 변수가 전역 변수를 쉐도잉하는 것과 동일하다
+val hello = &quot;Hello&quot;
+
+fun main() {
+    val hello = &quot;World!&quot;
+    println(hello) // &quot;World!&quot;가 출력된다
+}</code></pre>
+<p>타입 파라미터 역시 쉐도잉이 적용된다.</p>
+<p>이를 인지하고, 가급적 타입 파라미터 이름을 서로 다르게 해 쉐도잉되지 않도록 만들자.</p>
+<hr>
+<h3 id="마치며">마치며</h3>
+<p>한동안 문법에 대해 공부할 일이 없었는데, 미션을 수행하며 문법 지식에 대한 부족함을 깨달을 수 있어 기쁘다.<br>
+특히 Java에 비해 Kotlin 문법 이해도가 많이 부족하다고 생각하는데, 이번 일을 계기로 Kotlin 심화 문법을 계속해서 학습해보고자 한다.</p>
+<p>이젠 제네릭에 대해 학습했으니, 예전부터 꼭 배우고 싶었던 리플렉션에 대해 학습해보고자 한다.<br>
+필요성을 느낀 후 학습하니, 그 과정이 아주 즐거워 만족스럽다 😄</p>

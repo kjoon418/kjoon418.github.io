@@ -1,0 +1,287 @@
+<!--
+{
+  "title": "[우아한테크코스] 방탈출 예약 대기 미션 회고",
+  "summary": "세상 모든건 트레이드 오프다...",
+  "date": "2026-06-15T03:11:23.547Z",
+  "category": "retrospect",
+  "cover": "/assets/velog/966b994afcdfe7d73676.jpg",
+  "coverAlt": "[우아한테크코스] 방탈출 예약 대기 미션 회고"
+}
+-->
+<h3 id="개요">개요</h3>
+<p>레벨 2 필수 미션이 드디어 끝났다.<br>
+이번 미션에서는 <strong>트랜잭션을 분리하는 기준</strong>은 무엇인지, 어떨 땐 <strong>단위 테스트</strong>, 어떨 땐 <strong>통합 테스트</strong>를 사용할지 고민하는 시간을 보냈다.</p>
+<p>중간에 번아웃이 올 뻔 했지만, 테트리스를 통해 이겨낼 수 있었다 ㅎㅎ</p>
+<h3 id="깨달음">깨달음</h3>
+<h4 id="검증-로직의-위치-및-분배">검증 로직의 위치 및 분배</h4>
+<p>일반적인 Spring MVC는 Controller - Service - Repository로 구성되어 있고, 계층과 별개로 Domain이 존재한다.</p>
+<p>이렇게나 다양한 역할의 객체들이 존재하는데, 검증 로직은 어디에 두어야 하는 걸까?</p>
+<h5 id="controller-계층의-검증">Controller 계층의 검증</h5>
+<pre><code class="language-java">@GetMapping(&quot;users&quot;)
+public ResponseEntity&lt;List&lt;User&gt;&gt; findUsers(
+    @RequestParam int limit // 필수 파라미터를 정의한다
+) {
+	// ...
+}</code></pre>
+<p>컨트롤러는 API의 스펙을 표현한다.<br>
+즉, <strong>어느 값이 필수인지</strong>를 표현해야 한다.<br>
+그러므로, <code>null</code> 체크를 통해, 필수 값이 누락되지 않았는지 검증할 책임이 있다.</p>
+<p>별도의 목적이 없다면, Service나 Domain은 <code>null</code>을 체크하지 않는다.<br>
+<code>null</code>일 수 없는 값을 <code>null</code>로 보내주는 것은 계약 위반으로 합의한다.</p>
+<h5 id="domainvo-entity-등">Domain(VO, Entity 등)</h5>
+<pre><code class="language-java">public record UserName(
+	String value
+) {
+	public UserName {
+    &#9;if (value.isBlank() || value.length() &gt; 20) {
+        &#9;throw new IllegalStateException(&quot;이름은 비어 있거나 20자 초과일 수 없습니다.&quot;);
+        }
+    }
+&#32;&#32;&#32;&#32;
+    public UserName copy() {
+    &#9;if (&quot;관리자&quot;.equals(value)) {
+        &#9;throw new IllegalStateException(&quot;관리자
+}</code></pre>
+<p>Domain은 애플리케이션 전역에서 사용된다.<br>
+그러므로, 애플리케이션에 어디에서든 항상 적용될 요구사항을 검증해야 한다.</p>
+<p>단, 검증을 위해 외부 인프라(데이터베이스 등)를 의존할 순 없다.<br>
+외부 인프라에 의존하지 않는 선에서 검증한다.</p>
+<h5 id="service-계층의-검증">Service 계층의 검증</h5>
+<pre><code class="language-java">public void createUser(UserName userName) {
+	User user = new User(userName);
+&#9;
+    // 데이터베이스에 의존해야 검증할 수 있는 요구사항
+    if (userRepository.existsByName(userName)) {
+    &#9;throw new IllegalArgumentException(&quot;이미 사용중인 이름입니다.&quot;);
+    }
+    userRepository.save(userName);
+}</code></pre>
+<p>Controller와 Domain이 검증하지 않는 요구사항은 모두 Service로 넘어온다.<br>
+즉, Service는 &quot;외부 인프라에 의존해야 검증할 수 있는 요구사항&quot;을 검증한다.</p>
+<p>또한, 상황에 따라 다음 요구사항을 검증할 수 있다.</p>
+<ul>
+<li>일부 유스케이스에서만 적용되는 요구사항(ex_ 관리자의 회원 삭제)</li>
+<li>여러 도메인에 걸쳐 있는 요구사항</li>
+</ul>
+<p>위에 해당하는 검증 로직은 서비스가 지닐 수도, 도메인이 지닐 수도 있다.<br>
+어느 쪽에 두는게 더 바람직할지는 트레이드 오프를 고려하도록 하자.</p>
+<h4 id="테스트-로직의-책임-분배">테스트 로직의 책임 분배</h4>
+<p>애플리케이션을 구현하다 보면, 테스트해야 할 내용은 차고 넘친다.<br>
+테스트에 대한 명확한 기준이 없다면, 필수적인 테스트 케이스가 누락될 수도 있고, 같은 기능을 여러 곳에서 중복해서 테스트할 수도 있다.</p>
+<p>따라서, 상황별로 어떤 테스트가 필요한지 목표를 명확히 하고, 그에 맞는 도구를 선택하자.<br>
+이를 통해, 각 테스트의 목적을 명확히 분리하고 관리해야 한다.</p>
+<h5 id="controller-계층-테스트">Controller 계층 테스트</h5>
+<pre><code class="language-java">@WebMvcTest(UserController.class)
+class UserControllerTest {
+&#9;
+    @Nested
+    class 회원_조회 {
+&#32;&#32;&#32;&#32;&#9;
+        @Test
+        void 모든_회원_목록을_조회한다() {
+        &#9;// ...
+        }
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;
+        @Test
+        void limit_파라미터가_누락되었다면_4xx를_응답한다() {
+        &#9;// ...
+        }
+    }
+}</code></pre>
+<p>Controller 계층에 대한 테스트는 왜 작성하는걸까?<br>
+Controller가 본인의 책임을 다하는지 검증하기 위함이다.</p>
+<p>'Controller의 책임'을 조금 더 구체화해보자.</p>
+<ul>
+<li>필수 파라미터가 누락되었는지 검증한다.</li>
+<li>의도된 형태로 응답한다.</li>
+<li>의도된 상태 코드로 응답한다.</li>
+<li>의도된 엔드포인트 + HTTP 메서드의 요청을 처리한다.</li>
+</ul>
+<p>Controller 계층에 대한 테스트는 위 내용들만 검증하면 충분하다.<br>
+따라서, MockMvc를 이용한 슬라이드 테스트로 작성하길 권장한다.</p>
+<h5 id="service-계층-테스트">Service 계층 테스트</h5>
+<pre><code class="language-java">@ExtendWith(MockitoExtension.class)
+class FruitServiceTest {
+&#9;
+    @Test
+    void 과일의_상태를_판매_불가로_만든다() {
+    &#9;// given
+        Fruit fruit = new Fruit(1L, Status.ON_SALE);
+        Fruit updatedFruit = new Fruit(1L, Status.NOT_FOR_SALE);
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;
+        when(fruitRepository.findById(1L))
+        &#9;.thenReturn(fruit);
+        when(fruitRepository.updateStatus(fruit, Status.NOT_FOR_SALE))
+        &#9;.thenReturn(updatedFruit);
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;
+        // ...
+    }</code></pre>
+<p>Service 계층에 대한 테스트의 목적도 유사하다.<br>
+Service가 본인의 책임을 다하는지 검증하기 위함이다.</p>
+<p>Service는 비즈니스 로직을 다룬다.<br>
+즉, 비즈니스 요구사항대로 적절히 동작하는지를 테스트해야 한다.</p>
+<p>나는 여기서도 Repository를 모킹할 것을 권장한다.<br>
+반드시 모킹해야하는건 아니지만, 다음과 같은 이점이 있다.</p>
+<ul>
+<li>DB를 띄우지 않아도 되므로, 테스트 실행 속도가 빨라진다.</li>
+<li>테스트 실패 원인이 오직 서비스 혹은 테스트 코드에만 있다. (Repository 구현체에 의해 실패하지 않는다)</li>
+</ul>
+<p>위와 같은 이점이 덕에, &quot;Service 계층의 책임을 테스트한다&quot;라는 의도가 명확해진다.</p>
+<h5 id="통합-테스트">통합 테스트</h5>
+<pre><code class="language-java">class FruitServiceIntegrationTest {
+
+	@Nested
+    class 과일_판매는_원자적으로_동작한다 {
+&#32;&#32;&#32;&#32;&#9;
+        @Test
+        void 회원_잔고_수정에_실패하면_과일_재고도_수정되지_않는다() {
+        &#9;// ...
+        }
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;
+        @Test
+        void 모든_작업이_성공하면_모두_반영된다() {
+        &#9;// ...
+        }
+    }
+}</code></pre>
+<p>모킹 기반 단위 테스트만으로는 검증할 수 없는 책임도 있다.<br>
+대표적인 예시로, Spring AOP 기능이 있다.</p>
+<p>트랜잭션 경계(<code>@Transactional</code>), 재시도(<code>@Retryable</code>) 등의 기능은, 객체가 지닌 책임임에도 단위 테스트로는 검증할 수 없다.</p>
+<p>이런 기능에 한해 통합 테스트로 구현하도록 하자.<br>
+단위 테스트와 통합 테스트의 역할을 다음과 같이 구분할 수 있다.</p>
+<ul>
+<li>단위 테스트: 순수한 객체의 동작을 테스트한다</li>
+<li>통합 테스트: 외부 환경(Spring 등)에 의존하는 동작을 테스트한다</li>
+</ul>
+<h5 id="repository-계층-테스트">Repository 계층 테스트</h5>
+<pre><code class="language-java">@JdbcTest
+class UserRepositoryTest {
+&#9;
+    @Test
+    void 회원_정보를_저장한다() {
+    &#9;// given
+        User user = new User(&quot;Watson&quot;);
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;
+        // when
+        User savedUser = userRepository.save(user);
+
+		// then
+        String findSql = &quot;&quot;&quot;
+        &#9;&#9;SELECT *
+                FROM user
+                WHERE id = ?
+                &quot;&quot;&quot;;
+        User foundUser =jdbcTemplate.query(findSql, userRowMapper(), savedUser.id());&#32;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;
+        assertThat(foundUser).isEqualTo(savedUser);
+    }
+}</code></pre>
+<p>Repository 계층에 대한 테스트는 개념적으로 간단하다.<br>
+데이터베이스 로직이 제대로 구현되었는지 검증하면 된다.<br>
+Repository는 비즈니스 로직도 모르므로, 검증해야 할 케이스도 훨씬 간단하다.</p>
+<p>또한, <strong>DB에 실제로 반영되었는지</strong> 검증하길 권고한다.<br>
+단, 운영 환경과 똑같은 DB를 사용할 필요는 없다.<br>
+특이 케이스(특정 DB 기능을 사용한다거나)가 아니라면, 인메모리 DB를 사용해 테스트 속도를 높이길 권장한다.</p>
+<h5 id="e2e-테스트">E2E 테스트</h5>
+<pre><code class="language-java">class UserE2eTest extends IntegrationTestBase {
+
+    @Test
+    void 회원가입_후_로그인한다() {
+		// 1. 회원가입
+        given()
+            .contentType(ContentType.JSON)
+            .body(new SignUpRequest(&quot;아이디&quot;, &quot;비밀번호&quot;))
+        &#9;.when()
+            .post(&quot;/api/authorizations/users&quot;)
+        &#9;.then()
+            .statusCode(200);
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;
+        // 2. 로그인 및 JWT 발급 검증
+        String jwtToken = given()
+            .contentType(ContentType.JSON)
+            .body(new LoginRequest(&quot;아이디&quot;, &quot;비밀번호&quot;))&#32;
+        &#9;.when()
+            .post(&quot;/api/authorizations/users/login&quot;)&#32;
+        &#9;.then()
+            .statusCode(200)
+            .body(&quot;accessToken&quot;, notNullValue());
+    }
+}</code></pre>
+<p>통합 테스트와 단위 테스트를 통해 대부분을 검증할 수 있지만, 하나 부족한게 있다.<br>
+<strong>애플리케이션이 실제 환경에서도 잘 동작하는지</strong> 검증하려면, 결국 E2E 테스트가 필요해진다.</p>
+<p>E2E 테스트의 목적을 생각하면, 실제 운영 환경과 최대한 똑같은 환경에서 테스트를 수행해야 한다.<br>
+이를 위해서 Testcontainers 사용을 고려해보자.</p>
+<p>E2E 테스트는 Spring 컨테이너를 띄워야 하며, Testcontainers를 사용하면 도커 컨테이너를 띄우는 시간도 필요해진다.<br>
+따라서, 세세한 엣지 케이스까지 E2E로 작성하기보단, 사용자가 실제로 이 API를 호출했을 때도 정상 동작하는지 테스트하는걸 목표로 두고 작성하자.</p>
+<h4 id="트랜잭션-분리-기준">트랜잭션 분리 기준</h4>
+<p>트랜잭션은 작업의 원자성을 보장하고 싶을 때 사용할 수 있는 아주 좋은 도구다.</p>
+<p>그렇다면, 모든 작업을 하나의 트랜잭션에 묶는게 항상 좋은걸까?<br>
+이 고정관념을 벗어던지면, 트랜잭션을 어떨 때 분리해야 하는지 기준을 잡을 수 있어진다.</p>
+<p>크게 다음과 같은 관점을 고려해보자.</p>
+<ul>
+<li><strong>데이터 정합성 관점</strong>: 깨지면 즉시 문제가 되는가?</li>
+<li><strong>동작의 개념 관점</strong>: 개념적으로 하나의 동작인가?</li>
+<li><strong>동작의 실패 가능성 관점</strong>: 부가 동작이 실패할 확률이 높은가?</li>
+<li><strong>유지보수 관점</strong>: 분리하려면 구현이 많이 복잡해지는가?</li>
+<li><strong>트랜잭션 비용 관점</strong>: 묶으면 롱 트랜잭션이 되는가?</li>
+</ul>
+<p>이 중 몇가지는 예시까지 같이 확인해보자.</p>
+<h5 id="데이터-정합성-관점">데이터 정합성 관점</h5>
+<pre><code class="language-java">물건 재고를 차감한다
+	  ↓&#32;
+주문 정보를 생성한다
+	  ↓&#32;
+회원의 잔고를 줄인다</code></pre>
+<p>위와 같은 주문 기능이 있다고 가정해보자.<br>
+중간에 실패했을 때, 하나의 트랜잭션으로 묶이지 않았다면 어떻게 될까?</p>
+<pre><code class="language-java">물건 재고를 차감한다
+	  ↓&#32;
+주문 정보를 생성한다
+	  ↓&#32;
+회원의 잔고를 줄인다 ⬅ 실패!</code></pre>
+<p>위와 같이, 물건의 재고는 줄어들고 주문 정보는 생겼으나, 회원의 잔고가 줄어들지 않았다.<br>
+<strong>데이터 정합성</strong>이 깨졌으며, 즉시 문제가 될 수 있는 케이스다.</p>
+<pre><code class="language-java">예약을 취소한다
+	  ↓&#32;
+1순위 대기를 예약으로 승격한다</code></pre>
+<p>반면, 위와 같은 작업도 있다.<br>
+이 작업도, 중간에 실패하면 데이터 정합성이 깨진다.<br>
+하지만, 즉시 문제가 되진 않으니, <strong>추후에 해결해도 괜찮다</strong>.</p>
+<pre><code class="language-java">새로운 회원을 생성한다
+	  ↓&#32;
+회원가입 성공 이메일을 발송한다</code></pre>
+<p>반면, 이처럼 데이터 정합성과 관련 없는 작업도 있다.<br>
+이렇게 데이터 정합성이 문제가 되지 않을수록, <strong>별도 트랜잭션으로 분리하는걸 고려</strong>해볼만 하다.</p>
+<h5 id="동작의-개념-관점">동작의 개념 관점</h5>
+<pre><code class="language-java">물건 재고를 차감한다
+	  ↓&#32;
+주문 정보를 생성한다</code></pre>
+<p>앞서 사용한 예시를 다시 보자.<br>
+주문을 생성하고 물건 재고를 차감하는건, 개념적으로 하나의 동작이다.<br>
+따라서, 데이터 정합성 문제가 발생하지 않는다 하더라도, 하나의 동작으로 묶는게 자연스럽다.</p>
+<pre><code class="language-java">주문을 취소한다
+	  ↓&#32;
+주문 취소 히스토리를 생성한다</code></pre>
+<p>반면, 이렇게 '메인 동작'과 '부가 동작'으로 구분할 수 있는 기능도 있다.<br>
+이 경우엔, 하나의 트랜잭션으로 묶는게 오히려 부적절할 수 있다.</p>
+<p>'주문 취소 히스토리를 생성한다'가 실패하면 <strong>'주문을 취소한다'까지 롤백되어야 하는가?</strong><br>
+도메인 관점에서 생각해보자.<br>
+사용자는 &quot;히스토리 생성에 실패해서 주문이 취소되지 않았습니다&quot;라는 메시지를 납득할 수 있을까?</p>
+<h5 id="동작의-실패-가능성-관점">동작의 실패 가능성 관점</h5>
+<pre><code class="language-java">주문을 취소한다
+	  ↓&#32;
+주문 취소 완료 이메일을 발송한다</code></pre>
+<p>'이메일 발송'처럼, 외부 API에 의존하는 기능들이 존재한다.<br>
+이런 기능은 다른 기능에 비해 실패 확률이 높다.</p>
+<p>이렇게 부가 기능의 실패 확률이 높을수록, 트랜잭션 분리를 고려할 만 하다.<br>
+앞선 예시처럼 &quot;이메일 발송에 실패해서 주문이 취소되지 않았습니다&quot;라는 메시지를 볼 확률이 높은 상황이기 때문이다.</p>
+<pre><code class="language-java">주문을 취소한다
+	  ↓&#32;
+주문 취소 로그를 남긴다</code></pre>
+<p>반면, '히스토리 저장'이나 '로그 기록'처럼 실패 확률이 낮은 동작들도 있다.</p>
+<p>이런 기능은, 별도의 트랜잭션으로 분리해서 얻는 이점은 적다.<br>
+따라서, 추가적인 이유가 없다면 하나의 트랜잭션으로 관리해도 무방하다.</p>
+<h3 id="마치며">마치며</h3>
+<p>이번 미션을 마치며, &quot;트레이드 오프를 고려하는 능력&quot;과 &quot;나만의 명확한 기준을 만드는 능력&quot;이 중요하단걸 다시 한번 느꼈다.</p>
+<p>이 능력은 AI-Driven 환경에서도 유효할 능력이란 생각이 든다.<br>
+앞으로도 꾸준히 키워야겠다.</p>

@@ -1,0 +1,69 @@
+<!--
+{
+  "title": "Isolation Level이란?",
+  "summary": "READ UNCOMMITTED, READ COMMITTED, REPEATABLE READ, SERIALIZABLE",
+  "date": "2025-07-07T05:56:45.927Z",
+  "category": "tech",
+  "cover": "/assets/velog/78030c09caef801e76d0.png",
+  "coverAlt": "Isolation Level이란?"
+}
+-->
+<hr>
+<h3 id="0-격리-수준isolation-level이란">0. 격리 수준(Isolation level)이란?</h3>
+<p>동시에 여러 트랜잭션이 수행될 때, 각 트랜잭션이 서로에게 얼마나 영향을 받지 않도록 <strong>격리</strong>할 것인지를 결정하는 기준을 의미한다.<br>
+즉, 데이터베이스에서 <strong>동시성 제어</strong>를 어떻게 처리할지 결정하는 설정이다.</p>
+<p>MySQL에는 다음과 같은 4가지 Isolation level이 존재한다.</p>
+<ol>
+<li><strong>READ UNCOMMITTED</strong></li>
+<li><strong>READ COMMITTED</strong></li>
+<li><strong>REPEATABLE READ</strong> (기본값)</li>
+<li><strong>SERIALIZABLE</strong></li>
+</ol>
+<hr>
+<h3 id="1-read-uncommitted">1. READ UNCOMMITTED</h3>
+<p>커밋되지 않은 변경사항도 읽을 수 있게 하는 설정이다.<br>
+이로 인해 <strong>Dirty Read</strong>라는 이상현상이 발생할 수 있다.</p>
+<h4 id="dirty-read란">Dirty Read란?</h4>
+<p>다른 트랜잭션이 아직 커밋하지 않은 데이터를 읽는 것을 말한다.</p>
+<hr>
+<h3 id="2-read-committed">2. READ COMMITTED</h3>
+<p>커밋된 변경만 읽지만, 한 트랜잭션 내에서 같은 쿼리를 여러번 실행할 때 결과가 같음을 보장하지 않는다.<br>
+이를 <strong>Non-Repeatable Read</strong>라고도 한다.</p>
+<h4 id="왜-non-repeatable-read인가">왜 Non-Repeatable Read인가?</h4>
+<p><strong>READ COMMITTED</strong>는 <code>커밋된 데이터만 읽는다</code>라는 뜻이다.</p>
+<p>즉, 한 트랜잭션 내에서 다음과 같은 현상이 발생할 수 있다.<br>
+(나이가 <code>19</code>인 회원 <code>Kim</code>이 있다고 가정해보자)</p>
+<ol>
+<li>User 테이블에서 <code>Kim</code> 회원의 나이를 조회한다 → 19가 출력된다.</li>
+<li>다른 트랜잭션에서 <code>Kim</code> 회원의 나이를 19에서 25로 수정한다.</li>
+<li>User 테이블에서 <code>Kim</code> 회원의 나이를 조회한다 → 25가 출력된다.</li>
+</ol>
+<p>즉, 내 트랜잭션이 시작한 이후라도, 다른 트랜잭션의 커밋에 영향을 받는다.<br>
+이는 <strong>READ COMMITTED</strong>가 <code>언제나 최신 커밋된 데이터를 읽는다</code>라는 원칙 하에 동작하기 때문에 발생하는 현상이다.</p>
+<hr>
+<h3 id="3-repeatable-read">3. REPEATABLE READ</h3>
+<p>트랜잭션이 시작할 때 스냅샷을 따고, 트랜잭션 도중에는 해당 스냅샷을 계속 사용한다.<br>
+즉, 한 트랜잭션 내에서 같은 쿼리를 여러번 실행해도 결과가 같음을 보장한다.<br>
+(도중에 다른 트랜잭션에서 DELETE나 UPDATE를 사용해 레코드를 제거하거나 수정하더라도, 스냅샷의 값을 사용하므로 같은 결과가 조회된다)</p>
+<p>단, 특정 상황에서 <strong>Phantom Read</strong>라는 이상현상이 발생할 수 있다.</p>
+<h4 id="phantom-read란">Phantom Read란?</h4>
+<p>트랜잭션 중간에 새로 삽입된 행이 있다면, 해당 행이 스냅샷에 없더라도 같이 조회되는 현상을 의미한다.<br>
+이는, REPEATABLE READ의 스냅샷은 기존 행만 고정시키기 때문에 발생하는 이상현상이다.</p>
+<p>즉, 한 트랜잭션 내에서 다음과 같은 현상이 발생할 수 있다.</p>
+<ol>
+<li>User 테이블의 레코드 수를 조회한다 → 10이 출력된다.</li>
+<li>다른 트랜잭션에서 User 테이블에 새로운 레코드를 삽입한다.</li>
+<li>User 테이블의 레코드 수를 조회한다 → 11이 출력된다.</li>
+</ol>
+<hr>
+<h3 id="4-serializable">4. SERIALIZABLE</h3>
+<p>모든 트랜잭션을 직렬(Serial)로 실행하는 것처럼 동작하게 만드는 설정이다.<br>
+즉, 트랜잭션들이 동시에 실행되더라도, 마치 <strong>순서대로 하나씩</strong> 실행되는 것 처럼 작동하는 것을 보장한다.</p>
+<p>다음과 같은 제약을 부여한다.</p>
+<ol>
+<li>모든 읽기 작업(SELECT)에도 공유 락(Shared Lock)을 건다.</li>
+<li>조건에 해당하는 레코드 범위 전체에 잠금을 걸어서, 다른 트랜잭션이 <code>INSERT/UPDATE/DELETE</code> 하지 못하고 대기하도록 막는다.</li>
+</ol>
+<p>이를 통해, <strong>실행 순서는 달라도 결과는 항상 하나의 직렬 순서(Serial order)</strong>로 일어난 것 처럼 만든다.<br>
+즉, Dirty read, Non-repeatable read, Phantom read가 모두 발생하지 않게 된다.</p>
+<p>단, 모든 트랜잭션을 직렬화하므로 Isolateion level 중 가장 낮은 성능을 보인다.</p>

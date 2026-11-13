@@ -1,0 +1,361 @@
+<!--
+{
+  "title": "[Kotlin] 테스트와 추상화",
+  "summary": "테스트 코드가 너무 복잡하진 않나요?",
+  "date": "2025-09-20T07:03:30.828Z",
+  "category": "tech",
+  "cover": "/assets/velog/6a1ebf28c5733229966c.png",
+  "coverAlt": "[Kotlin] 테스트와 추상화"
+}
+-->
+<h2 id="개요">개요</h2>
+<p>테스트 코드는 잘 짜고 계신가요?<br>
+복잡한 로직일수록 테스트 코드는 길어지고, 그러다 보면 정작 내가 무엇을 테스트하고자 하는지는 잘 읽히지 않아요.<br>
+상수와 <code>Default parameter</code>를 사용해서 그 문제를 조금이나마 해결해 봅시다.</p>
+<hr>
+<h2 id="사용할-클래스">사용할 클래스</h2>
+<pre><code class="language-kotlin">@Entity
+class Member(
+    val email: String,
+    val name: String,
+    val age: Int,
+) {
+    @Id
+    @GeneratedValue
+    val id: Long? = null
+}</code></pre>
+<hr>
+<pre><code class="language-kotlin">interface MemberRepository : JpaRepository&lt;Member, Long&gt; {
+    fun findByEmail(email: String): Member?
+}</code></pre>
+<hr>
+<pre><code class="language-kotlin">data class MemberCreateRequestDto(
+    val email: String,
+    val name: String,
+    val age: Int
+)</code></pre>
+<hr>
+<pre><code class="language-kotlin">@Service
+class MemberService(
+    private val memberRepository: MemberRepository
+) {
+    @Transactional
+    fun create(requestDto: MemberCreateRequestDto) {
+        if (!requestDto.email.contains(&quot;@&quot;)) {
+            throw IllegalArgumentException(&quot;이메일 형식이 부적절합니다.&quot;)
+        }
+        if (requestDto.age &lt; 1) {
+            throw IllegalArgumentException(&quot;나이는 1보다 작을 수 없습니다.&quot;)
+        }
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;
+        val member = Member(
+            email = requestDto.email,
+            name = requestDto.name,
+            age = requestDto.age
+        )
+
+        memberRepository.save(member)
+    }
+}
+</code></pre>
+<p>간단한 회원 생성 로직을 테스트해볼게요. 예시를 들기 위함이니 실제 구현은 크게 신경쓰지 않기로 해요!<br>
+또한 모킹을 사용하여 Spring Boot에 의존하지 않게 테스트하면 좋지만, 예시가 복잡해지니 <code>@SpringBootTest</code> 어노테이션을 사용하도록 할게요.</p>
+<h2 id="테스트를-작성해보자">테스트를 작성해보자</h2>
+<h4 id="1-일단-작성해보자">1. 일단 작성해보자</h4>
+<pre><code class="language-kotlin">@SpringBootTest
+class MemberServiceTest(
+    @Autowired
+    private val memberService: MemberService,
+    @Autowired
+    private val memberRepository: MemberRepository
+) {
+    @Test
+    fun `입력된 정보를 기반으로 회원을 저장한다`() {
+        // given
+        val email = &quot;test@email.com&quot;
+        val name = &quot;test name&quot;
+        val age = 25
+        val requestDto = MemberCreateRequestDto(
+            email = email,
+            name = name,
+            age = age
+        )
+
+        // when
+        memberService.create(requestDto)
+
+        // then
+        val member = memberRepository.findByEmail(email)
+        Assertions.assertThat(member).isNotNull()
+        Assertions.assertThat(member?.name).isEqualTo(name)
+        Assertions.assertThat(member?.age).isEqualTo(age)
+    }
+}</code></pre>
+<p><code>MemberService.create</code> 메서드가 제대로 동작하는지를 검증하는 기초적인 테스트를 하나 만들었어요. 이어서 예외 상황에 대한 테스트도 작성해볼까요?</p>
+<pre><code class="language-kotlin">    @Test
+    fun `이메일 형식이 부적절하면 예외를 던진다`() {
+        // given
+        val illegalEmail = &quot;illegal email&quot;
+        val name = &quot;test name&quot;
+        val age = 25
+        val requestDto = MemberCreateRequestDto(
+            email = illegalEmail,
+            name = name,
+            age = age
+        )
+
+        // when &amp; then
+        Assertions.assertThatThrownBy { memberService.create(requestDto) }
+    }
+
+    @Test
+    fun `나이가 1보다 작으면 예외를 던진다`() {
+        // given
+        val email = &quot;test@email.com&quot;
+        val name = &quot;test name&quot;
+        val illegalAge = -1
+        val requestDto = MemberCreateRequestDto(
+            email = email,
+            name = name,
+            age = illegalAge
+        )
+
+        // when &amp; then
+        Assertions.assertThatThrownBy { memberService.create(requestDto) }
+    }</code></pre>
+<p>제대로 동작하는 코드에요. 그런데 뭔가 불편하거나 어색하진 않으신가요?<br>
+일단은 코드 중복과 매직 넘버 문제가 넘버 문제가 심각하네요. 우선 <code>email</code>, <code>name</code>, <code>age</code>를 상수화해서 해결해 볼게요.</p>
+<h4 id="2-상수를-이용해서-개선해보자">2. 상수를 이용해서 개선해보자</h4>
+<pre><code class="language-kotlin">private const val EMAIL = &quot;test@email.com&quot;
+private const val NAME = &quot;test name&quot;
+private const val AGE = 25
+
+@SpringBootTest
+class MemberServiceTest(
+    @Autowired
+    private val memberService: MemberService,
+    @Autowired
+    private val memberRepository: MemberRepository
+) {
+    @Test
+    fun `입력된 정보를 기반으로 회원을 저장한다`() {
+        // given
+        val requestDto = MemberCreateRequestDto(
+            email = EMAIL,
+            name = NAME,
+            age = AGE
+        )
+
+        // when
+        memberService.create(requestDto)
+
+        // then
+        val member = memberRepository.findByEmail(EMAIL)
+        Assertions.assertThat(member).isNotNull()
+        Assertions.assertThat(member?.name).isEqualTo(NAME)
+        Assertions.assertThat(member?.age).isEqualTo(AGE)
+    }
+
+    @Test
+    fun `이메일 형식이 부적절하면 예외를 던진다`() {
+        // given
+        val illegalEmail = &quot;illegal email&quot;
+        val requestDto = MemberCreateRequestDto(
+            email = illegalEmail,
+            name = NAME,
+            age = AGE
+        )
+
+        // when &amp; then
+        Assertions.assertThatThrownBy { memberService.create(requestDto) }
+    }
+
+    @Test
+    fun `나이가 1보다 작으면 예외를 던진다`() {
+        // given
+        val illegalAge = -1
+        val requestDto = MemberCreateRequestDto(
+            email = EMAIL,
+            name = NAME,
+            age = illegalAge
+        )
+
+        // when &amp; then
+        Assertions.assertThatThrownBy { memberService.create(requestDto) }
+    }
+}</code></pre>
+<p>상수를 도입한 덕에 코드 중복 문제와 매직 넘버 문제를 해결했어요.<br>
+그런데 아직도 문제가 될 여지가 남아있는데, 뭔지 눈치채셨나요?</p>
+<pre><code class="language-kotlin">    @Test
+    fun `이메일 형식이 부적절하면 예외를 던진다`() {
+        // given
+        val illegalEmail = &quot;illegal email&quot;
+        val requestDto = MemberCreateRequestDto(
+            email = illegalEmail,
+            name = NAME,
+            age = AGE
+        )
+
+        // when &amp; then
+        Assertions.assertThatThrownBy { memberService.create(requestDto) }
+    }</code></pre>
+<p>위의 테스트 케이스는 <strong>부적절한 이메일을 사용하는지</strong>가 중요해요.<br>
+그 말은 즉슨, <code>name</code>과 <code>age</code> 값이 어떻게 지정되는지는 핵심 관심 사항이 아니라는거죠.<br>
+하지만 지금의 코드에서는 <code>MemberCreateRequestDto</code>에 어떤 <code>name</code>과 어떤 <code>age</code>가 들어가는지까지 명시되어 있어요.</p>
+<p>이렇게 간단한 로직의 경우라면 오히려 직관적일 수 있어요.<br>
+하지만 이런 내용은, 테스트 코드가 길어질수록 어떤 것을 테스트하고 싶은 것인지 헷갈리게 만들어요.</p>
+<h4 id="3-테스트-코드를-추상화해보자">3. 테스트 코드를 추상화해보자</h4>
+<pre><code class="language-kotlin">private const val EMAIL = &quot;test@email.com&quot;
+private const val NAME = &quot;test name&quot;
+private const val AGE = 25
+
+@SpringBootTest
+class MemberServiceTest(
+    @Autowired
+    private val memberService: MemberService,
+    @Autowired
+    private val memberRepository: MemberRepository
+) {
+    @Test
+    fun `입력된 정보를 기반으로 회원을 저장한다`() {
+        // given
+        val requestDto = createRequestDto(
+            email = EMAIL,
+            name = NAME,
+            age = AGE
+        )
+
+        // when
+        memberService.create(requestDto)
+
+        // then
+        val member = memberRepository.findByEmail(EMAIL)
+        Assertions.assertThat(member).isNotNull()
+        Assertions.assertThat(member?.name).isEqualTo(NAME)
+        Assertions.assertThat(member?.age).isEqualTo(AGE)
+    }
+
+    @Test
+    fun `이메일 형식이 부적절하면 예외를 던진다`() {
+        // given
+        val illegalEmail = &quot;illegal email&quot;
+        val requestDto = createRequestDto(email = illegalEmail)
+
+        // when &amp; then
+        Assertions.assertThatThrownBy { memberService.create(requestDto) }
+    }
+
+    @Test
+    fun `나이가 1보다 작으면 예외를 던진다`() {
+        // given
+        val illegalAge = -1
+        val requestDto = createRequestDto(age = illegalAge)
+
+        // when &amp; then
+        Assertions.assertThatThrownBy { memberService.create(requestDto) }
+    }
+&#32;&#32;&#32;&#32;
+    private fun createRequestDto(
+        email: String = EMAIL,
+        name: String = NAME,
+        age: Int = AGE
+    ): MemberCreateRequestDto {
+        return MemberCreateRequestDto(
+            email = email,
+            name = name,
+            age = age
+        )
+    }
+}</code></pre>
+<p>유틸 메서드인 <code>createRequestDto</code>를 만들어서, 테스트 로직 중 DTO를 생성하는 부분을 추상화했어요. 각각의 테스트 케이스를 살펴보며 자세히 알아가 볼까요?</p>
+<pre><code class="language-kotlin">    @Test
+    fun `입력된 정보를 기반으로 회원을 저장한다`() {
+        // given
+        val requestDto = createRequestDto(
+            email = EMAIL,
+            name = NAME,
+            age = AGE
+        )
+
+        // when
+        memberService.create(requestDto)
+
+        // then
+        val member = memberRepository.findByEmail(EMAIL)
+        Assertions.assertThat(member).isNotNull()
+        Assertions.assertThat(member?.name).isEqualTo(NAME)
+        Assertions.assertThat(member?.age).isEqualTo(AGE)
+    }</code></pre>
+<p>이 테스트 케이스는 DTO에 담긴 <code>email</code>, <code>name</code>, <code>age</code>가 모두 잘 반영된 <code>Member</code> 엔티티가 저장되었는지를 검증하고 있어요.<br>
+즉, <code>email</code>, <code>name</code>, <code>age</code>가 모두 핵심 관심사항이에요.</p>
+<p>만약 <code>createRequestDto</code> 메서드의 Default Parameter를 활용하고자 아규먼트를 생략해버리면, 테스트 코드를 한 눈에 이해하기 어려워지겠죠?<br>
+그렇기 때문에 어떤 값으로 DTO를 만드는지 모두 지정해주는게 좋아요.</p>
+<pre><code class="language-kotlin">    @Test
+    fun `이메일 형식이 부적절하면 예외를 던진다`() {
+        // given
+        val illegalEmail = &quot;illegal email&quot;
+        val requestDto = createRequestDto(email = illegalEmail)
+
+        // when &amp; then
+        Assertions.assertThatThrownBy { memberService.create(requestDto) }
+    }</code></pre>
+<p>앞서 설명했듯이, 이 테스트 케이스는 <strong>부적절한 이메일</strong>을 넘겼을 때 어떻게 동작하는지가 핵심 관심사항이에요.<br>
+핵심 관심사항이 아닌 <code>email</code>과 <code>name</code>은 신경쓰지 않도록 유틸 메서드를 활용했어요.</p>
+<p>세부사항을 추상화 한 덕에, 테스트의 목적인 <strong>이메일 값이 부적절하면 예외를 던진다</strong>가 더욱 잘 보이게 됐어요.</p>
+<pre><code class="language-kotlin">    @Test
+    fun `나이가 1보다 작으면 예외를 던진다`() {
+        // given
+        val illegalAge = -1
+        val requestDto = createRequestDto(age = illegalAge)
+
+        // when &amp; then
+        Assertions.assertThatThrownBy { memberService.create(requestDto) }
+    }</code></pre>
+<p>이 테스트 케이스도 위와 같이 개선했어요.</p>
+<hr>
+<h2 id="정리해-봅시다">정리해 봅시다</h2>
+<h4 id="1-추상화를-적절히-사용해봐요">1. 추상화를 적절히 사용해봐요</h4>
+<p>저는 핵심 관심사항에 집중할 수 있도록 주요 세부사항들을 감추는 방향으로 코드를 개선했어요.<br>
+즉, <strong>추상화를 통해 핵심에 집중하게</strong> 만든거에요.</p>
+<h4 id="2-추상화는-무조건-좋은-건가요">2. 추상화는 무조건 좋은 건가요?</h4>
+<pre><code class="language-kotlin">	// 개선 전
+    @Test
+    fun `이메일 형식이 부적절하면 예외를 던진다`() {
+        // given
+        val illegalEmail = &quot;illegal email&quot;
+        val requestDto = MemberCreateRequestDto(
+            email = illegalEmail,
+            name = NAME,
+            age = AGE
+        )
+
+        // when &amp; then
+        Assertions.assertThatThrownBy { memberService.create(requestDto) }
+    }
+
+	// 개선 후
+    @Test
+    fun `이메일 형식이 부적절하면 예외를 던진다`() {
+        // given
+        val illegalEmail = &quot;illegal email&quot;
+        val requestDto = createRequestDto(email = illegalEmail)
+
+        // when &amp; then
+        Assertions.assertThatThrownBy { memberService.create(requestDto) }
+    }</code></pre>
+<p>사실 제가 가져온 예제는, 추상화를 적용하기 적절한 예제가 아니었어요.<br>
+저의 코드 개선으로 인해 오히려 복잡도가 증가했다고 느끼진 않으셨나요?</p>
+<p>우선, <strong>알아야 할 메서드가 추가됐어요.</strong><br>
+직관적인 네이밍으로 커버할 순 있지만, 결국 코드를 읽는 입장에선 <code>createRequestDto</code> 메서드가 어떤 역할을 하는지를 어느 정도 이해해야겠죠?<br>
+이렇게 알아야 할 내용이 많아지면 오히려 코드의 복잡도가 증가할 수 있어요.</p>
+<p>또한, <strong>세부 사항을 알기 어려워졌어요.</strong><br>
+<em>'엥?? 세부 사항을 숨기면 좋은거 아닌가요?'</em> 라고 의문을 표할 수도 있어요.<br>
+하지만 <strong>적절한 수준으로</strong> 추상화하지 못한다면, 오히려 알아야 할 사항들을 감추게 되어 코드 이해를 방해할 수 있어요.</p>
+<p>위 테스트 메서드만으로는 <code>createRequestDto</code>가 어떤 값을 지닌 DTO를 생성한다는 것인지 정확히 알 수 없어요.<br>
+<code>createRequestDto</code>가 아규먼트로 지정하지 않은 나머지 속성을 어떻게 처리하는지 알 수 없으니, <em>'이름과 나이는 적절한 값을 주었지만 이메일 형식만 부족한 상황'</em> 이라는 문맥을 한 눈에 파악하기 힘들 수 있어요.</p>
+<h4 id="3-그래서-어떻게-하라는건가요">3. 그래서 어떻게 하라는건가요?</h4>
+<p>저는 <strong>추상화의 수준</strong>에 대해선, 항상 통하는 정답이 없다고 생각해요.<br>
+이 글을 읽은 여러분은 테스트 코드에 어떻게 추상화를 도입할 수 있는지에 대한 힌트를 얻으신거에요.</p>
+<p>위 예시처럼 간단하고 짧은 코드에서는 오히려 독이 될 수 있지만, 한 케이스당 20 줄이 넘어가는 복잡한 테스트를 작성할 때에는 도움이 될 수도 있겠죠?</p>
+<p>항상 고민하고 한 줄 한 줄 의미를 담는 개발자가 되도록 노력해 봐요.<br>
+저도 여러분과 같이 항상 고민하고 노력할게요 😄</p>

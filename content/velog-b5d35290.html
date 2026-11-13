@@ -1,0 +1,165 @@
+<!--
+{
+  "title": "왜 Java 말고 Kotlin 쓰나요?",
+  "summary": "Kotlin은 어쩌다가 Java 개발자들이 한 번 넘어가면 돌아오지 못하는 언어가 된걸까요?",
+  "date": "2025-07-11T06:08:49.745Z",
+  "category": "tech",
+  "cover": "/assets/velog/cfc3b700505177fcff90.png",
+  "coverAlt": "왜 Java 말고 Kotlin 쓰나요?"
+}
+-->
+<hr>
+<p>저는 주 언어로 <strong>Java</strong>를 사용하다가 최근에 <strong>Kotlin</strong>으로 넘어왔어요.<br>
+<strong>Kotlin</strong>은 어쩌다가 <strong>Java 개발자들이 한 번 넘어가면 돌아오지 못하는 언어</strong>가 된걸까요?</p>
+<p>가독성 측면에서 제게 가장 크게 와닿은 몇 가지 기능을 설명해드릴게요.<br>
+어려운 내용이 아니니, <strong>Kotlin</strong>을 아예 몰라도 이해할 수 있을거에요.</p>
+<hr>
+<h2 id="named-argument">Named argument</h2>
+<p><strong>Kotlin</strong>은 Named argument라는 문법을 지니고 있어요.<br>
+이 문법이 어떤 상황에 유용한지, <strong>Java</strong>와 비교해볼까요?</p>
+<h4 id="java의-한계">Java의 한계</h4>
+<pre><code class="language-java">public class User {
+    String firstName;
+    String lastName;
+    String nickName;
+    String location;
+
+    public User(String firstName, String lastName, String nickName, String location) {
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.nickName = nickName;
+        this.location = location;
+    }
+}</code></pre>
+<p>이런 클래스가 있다고 가정해볼게요.<br>
+<code>User</code> 인스턴스를 생성하는 코드는 어떤지 볼까요?</p>
+<pre><code class="language-java">// Jun은 뭐고 Kim은 뭐고 Watson은 뭔가요...?
+User user = new User(&quot;Jun&quot;, &quot;Kim&quot;, &quot;Watson&quot;, &quot;Seoul&quot;);</code></pre>
+<p>세상에나, 이런게 코드가 맞긴 한걸까요?<br>
+무슨 아규먼트가 어떤 역할을 하는지 파악하기 너무 힘들어요...<br>
+실수로 아규먼트 위치를 틀려도 파악하기 너무 오래 걸리겠네요.</p>
+<pre><code class="language-java">// 조금 나아졌네요!
+User user = User.builder()
+		.firstName(&quot;Jun&quot;)
+        .lastName(&quot;Kim&quot;)
+        .nickName(&quot;Watson&quot;)
+        .location(&quot;Seoul&quot;)
+        .build();</code></pre>
+<p><strong>Java</strong>는 이런 상황을 해결할 수 있도록 <strong>Builder</strong> 패턴이라는 해법을 내놨어요.<br>
+하지만 <strong>Lombok</strong>을 사용한다고 해도 <code>User</code> 클래스에 어노태이션을 붙여주어야 해서 번거롭고, <code>builder()</code>와 <code>build()</code> 메서드를 사용해야 해서 코드가 조금 지저분해져요.</p>
+<h4 id="kotlin에서는-어떻게">Kotlin에서는 어떻게?</h4>
+<pre><code class="language-kotlin">// Kotlin에서는 클래스를 이렇게 선언해요
+class User(
+    val firstName: String,
+    val lastName: String,
+    val nickName: String,
+    val location: String
+)</code></pre>
+<p>Kotlin에도 똑같이 <code>User</code> 클래스를 만들어 볼게요.</p>
+<pre><code class="language-kotlin">// 편할 뿐 아니라 가독성도 좋네요!
+val user = User(
+	firstName = &quot;Jun&quot;,
+	lastName = &quot;Kim&quot;,
+	nickName = &quot;Watson&quot;,
+	location = &quot;Seoul&quot;
+)</code></pre>
+<p><strong>Kotlin</strong>은 기본적으로 <strong>Named argument</strong> 문법을 지원하기 때문에, 별도의 코드 추가 없이도 <code>User</code> 인스턴스를 위와 같이 생성할 수 있어요</p>
+<p>어느 아규먼트가 어떤 역할을 수행하는지 한 눈에 보여 가독성이 좋아지네요.</p>
+<p>또한, 아규먼트의 순서를 바꾸더라도 문제되지 않는답니다.<br>
+(Builder와 동일한 장점이에요)</p>
+<hr>
+<h2 id="default-parameter">Default parameter</h2>
+<p><strong>Default parameter</strong> 문법도 <strong>Java</strong>와 비교하며 알아볼까요?<br>
+콘솔에 <code>Hello, &lt;name&gt;!</code>을 출력하는 메서드를 만들어볼게요.<br>
+클라이언트가 <code>name</code>을 전달하지 않으면, 기본값으로 <code>User</code>를 사용할거에요.</p>
+<h4 id="java는-기본값을-어떻게-구현하죠">Java는 기본값을 어떻게 구현하죠?</h4>
+<pre><code class="language-java">public class Greeting {
+    void hello() {
+        hello(&quot;User&quot;);
+    }
+
+    void hello(String name) {
+        System.out.println(&quot;Hello, &quot; + name + &quot;!&quot;);
+    }
+}</code></pre>
+<p>콘솔에 <code>Hello &lt;name&gt;!</code>을 출력하는 <code>hello</code> 메서드를 만들었어요.<br>
+<code>hello</code> 메서드가 <code>name</code> 파라미터를 받지 않았을 때 기본값(<code>User</code>)을 사용하도록 하고 싶다면, 위와 같이 메서드를 오버로딩해서 모든 경우의 수를 구현해 주어야 해요.</p>
+<p>위 상황에서는 파라미터가 1개이니까 메서드를 2개 만들어서 해결했지만, 파라미터가 더 많다면 모든 경우의 수를 다 구현할 수 있을까요?</p>
+<pre><code class="language-java">Greeting greeting = new Greeting();
+
+greeting.hello(&quot;Watson&quot;); // Hello, Watson!
+greeting.hello(); // Hello, User!</code></pre>
+<p>구현에 손이 많이 가지만 일단 동작은 하네요.<br>
+하지만 이게 최선일까요?</p>
+<h4 id="kotlin에서는요">Kotlin에서는요?</h4>
+<pre><code class="language-kotlin">class Greeting {
+    fun hello(name: String = &quot;User&quot;) {
+        print(&quot;Hello, &quot; + name + &quot;!&quot;)
+    }
+}</code></pre>
+<p><strong>Kotlin</strong>에서는 파라미터에 <code>= &quot;User&quot;</code>처럼 기본값을 할당해줄 수 있어요.<br>
+만약 클라이언트가 <code>name</code> 파라미터를 전달하지 않으면, <code>name</code> 파라미터에는 기본값인 <code>User</code>가 할당될거에요.</p>
+<p>참고로 <code>&quot;Hello, &quot; + name + &quot;!&quot;</code> 부분을 간략하게 만들어주는 <strong>String template</strong>이라는 문법도 있는데, 궁금하면 찾아보세요!</p>
+<pre><code class="language-kotlin">val greeting = Greeting()
+
+greeting.hello(&quot;Watson&quot;) // Hello, Watson!
+greeting.hello() // Hello, User!</code></pre>
+<hr>
+<h2 id="프로퍼티에-접근하는-방법">프로퍼티에 접근하는 방법</h2>
+<p><strong>Java</strong>에서는 Getter와 Setter를 이용해서 속성 값을 조회하고 수정하죠.<br>
+<strong>Kotlin</strong>에서는 어떻게 달라졌는지 볼까요?</p>
+<h4 id="java의-경우">Java의 경우</h4>
+<pre><code class="language-java">public class Fruit {
+    private String name;
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+}</code></pre>
+<p>직접 프로퍼티마다 <code>Getter</code>와 <code>Setter</code>를 구현해 주어야 해요.<br>
+값을 수정하지 못하게 하려면 <code>Setter</code>를 만들지 않으면 되겠죠?</p>
+<pre><code class="language-java">Fruit fruit = new Fruit();
+
+fruit.setName(&quot;Apple&quot;);
+String name = fruit.getName(); // name = &quot;Apple&quot;</code></pre>
+<p>이것처럼 메서드를 이용해 프로퍼티를 조회하거나 수정할 수 있어요.<br>
+익숙한 방법이죠?</p>
+<h4 id="kotlin의-경우">Kotlin의 경우</h4>
+<pre><code class="language-kotlin">// 엥 이게 다에요?
+class Fruit(
+    var name: String
+)</code></pre>
+<p><strong>Kotlin</strong>은 놀랍도록 간단하게 프로퍼티에 접근할 수 있어요.<br>
+<code>var</code>는 <strong>값을 재할당할 수 있는 변수</strong>라는 뜻인데, 위와 같이 프로퍼티를 <code>var</code>로 선언하면 <code>Getter</code>와 <code>Setter</code>가 자동으로 구현돼요.<br>
+저희가 따로 만들어줄 필요 없답니다!</p>
+<pre><code class="language-kotlin">// 마치 프로퍼티에 바로 접근하는 것 같죠?
+val fruit = Fruit()
+
+fruit.name = &quot;Apple&quot;
+val name = fruit.name // name = &quot;Apple&quot;</code></pre>
+<p><code>Getter</code>와 <code>Setter</code>가 자동으로 구현된다고 했지만, 실제로는 위와 같이 프로퍼티에 접근해요.</p>
+<p><code>fruit.name = &quot;Apple&quot;</code>처럼, <code>fruit.name</code>에 값을 할당하려 하면 <code>Setter</code>가 호출되고, <code>val name = fruit.name</code>처럼 <code>fruit.name</code>의 값을 조회하려 하면 <code>Getter</code>가 호출돼요.<br>
+놀랍지 않나요?</p>
+<p>저는 <code>getXXX</code>이나 <code>setXXX</code>처럼 메서드를 호출하는 방식이 가독성이 좋지 않다고 느꼈기 때문에, <strong>Kotlin</strong>에서 위와 같이 프로퍼티에 직접 접근하는 듯한 방법이 마음에 들었어요.</p>
+<pre><code class="language-kotlin">// 값을 수정하지 못하게 하려면?
+class Fruit(
+    val name: String
+)
+
+// 외부에서 접근하지 못하게 하려면?
+class Fruit(
+    private var name: String
+)</code></pre>
+<p>프로퍼티의 값을 수정하지 못하게 하려면 <code>val</code> 키워드를 사용하면 돼요.<br>
+<code>val</code> 키워드를 사용할 경우 외부에서 <code>Getter</code>만 사용할 수 있게 된답니다.</p>
+<p>만약 아예 접근 자체를 막고 싶다면, 접근지정자를 <code>private</code>으로 지정하면 돼요.<br>
+<strong>Kotlin</strong>에서는 기본 접근지정자가 <code>public</code>이란 것도 참고로 알고 계시면 좋을 것 같아요.</p>
+<hr>
+<h2 id="마치며">마치며</h2>
+<p><strong>Kotlin</strong>에는 위와 같이 다양한 문법을 추가로 제공해요.<br>
+어려워서 이해가 힘들거나, 중요하지 않아서 생략한 많은 문법들이 더 존재한답니다.</p>
+<p>여러분도 <strong>Kotlin</strong>을 통해 코드의 가독성을 향상시켜보는건 어떨까요?</p>

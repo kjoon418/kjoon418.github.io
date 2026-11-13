@@ -1,0 +1,311 @@
+<!--
+{
+  "title": "[Java] 애노테이션 기초",
+  "summary": "Java 애노테이션에 대해 알아보자.",
+  "date": "2025-11-24T10:09:05.349Z",
+  "category": "tech",
+  "cover": "/assets/velog/b5d0c5d77cf2af5a58d3.png",
+  "coverAlt": "[Java] 애노테이션 기초"
+}
+-->
+<h3 id="개요">개요</h3>
+<p>리플렉션을 본격적으로 사용하기 위해서는 애노테이션을 사용할 줄 알아야 한다.<br>
+이전 시간에 리플렉션에 대해 학습해봤으니, 이번에는 애노테이션 사용법을 알아보자.</p>
+<hr>
+<h3 id="애노테이션이란">애노테이션이란?</h3>
+<p>주석(Annotation)에서 유래되었다.<br>
+말 그대로 코드에 추가적인 정보를 제공하는 주석 역할을 한다.</p>
+<p>개발자만 이해할 수 있는 주석과 달리, 애노테이션은 컴파일 시점 혹은 런타임 시점에 해석될 수 있는 메타데이터를 제공한다.<br>
+즉, <strong>프로그램이 읽을 수 있는 주석</strong>이다.</p>
+<hr>
+<h3 id="애노테이션-정의하기">애노테이션 정의하기</h3>
+<h4 id="1-애노테이션-정의-형식">1. 애노테이션 정의 형식</h4>
+<pre><code class="language-java">public @interface MyAnnotation { ... }</code></pre>
+<p><code>@interface</code> 키워드로 애노테이션을 정의할 수 있다.</p>
+<p>애노테이션은 속성을 가질 수 있으며, 아래에서 확인할 수 있듯이 인터페이스와 문법이 비슷하다.</p>
+<h4 id="2-애노테이션이-지닐-수-있는-데이터-타입">2. 애노테이션이 지닐 수 있는 데이터 타입</h4>
+<pre><code class="language-java">public @interface MyAnnotation {
+	// int, float, boolean 등 기본 타입
+	int number();
+
+	// String
+	String string();
+
+	// 타입에 대한 메타데이터
+	Class&lt;MyClass&gt; type();
+&#9;
+	// Enum
+	MyEnum myEnum();
+&#9;
+	// 다른 애노태이션 타입
+	AnotherAnnotation anotherAnnotation();
+&#9;
+	// 위 타입에 해당하는 배열
+	boolean[] booleans();
+}</code></pre>
+<p>애노테이션은 데이터를 위와 같이 <strong>메서드 형태로 정의</strong>한다.</p>
+<p>이 메서드는 매개변수를 지닐 수 없고, 반환 타입으로 <code>void</code>를 사용할 수 없다.<br>
+또한, 예외를 선언할(<code>throws</code>) 수 없다.</p>
+<p>애노테이션이 지닐 수 있는 데이터의 타입은 다음과 같다.</p>
+<ol>
+<li>기본 타입(Primitive type)</li>
+<li><code>String</code></li>
+<li><code>Class</code></li>
+<li><code>enum</code> 타입</li>
+<li>다른 애노테이션 타입</li>
+<li>위 타입들에 대한 배열</li>
+</ol>
+<h4 id="3-default-값">3. default 값</h4>
+<pre><code class="language-java">public @interface MyAnnotation {
+	// 값을 지정하지 않을 때 100이 대입된다
+	int number() default 100;
+}</code></pre>
+<p><code>default</code> 키워드를 사용하면, 애노테이션 속성의 기본 값을 지정할 수 있다.</p>
+<h4 id="4-상속">4. 상속</h4>
+<pre><code class="language-java">package java.lang.annotation;
+
+public interface Annotation {
+	// 동등성 비교
+	boolean equals(Object obj);
+	// 해시코드 반환
+	int hashCode();
+	// 문자열 표현 반환
+	String toString();
+	// 애노테이션의 타입 메타데이터 반환
+	Class&lt;? extends Annotation&gt; annotationType();
+}</code></pre>
+<p>모든 애노테이션은 <code>java.lang.annotation.Annotation</code> 인터페이스를 상속한다.</p>
+<p>enum의 경우와 같이 묵시적으로 상속하므로, 별도로 <strong>명시할 필요는 없다</strong>.<br>
+Java 컴파일러가 <code>@interface</code> 키워드를 통해 정의된 객체에 대해, Annotation 인터페이스를 확장하도록 처리해준다.</p>
+<p>애노테이션은 다른 애노테이션이나 인터페이스를 상속할 수 없고, 오직 <code>java.lang.annotation.Annotation</code>만 상속 가능하다.<br>
+따라서, <strong>애노테이션 간에는 상속 개념이 존재하지 않는다</strong>.</p>
+<hr>
+<h3 id="애노테이션-사용하기">애노테이션 사용하기</h3>
+<h4 id="1-애노테이션-사용-예시">1. 애노테이션 사용 예시</h4>
+<pre><code class="language-java">@MyAnnotation(number = 30)
+public class MyClass { ... }</code></pre>
+<p>이와 같이, 사용하고 싶은 대상에게 애노테이션을 붙일 수 있다.</p>
+<p>애노테이션은 타입(클래스, 인터페이스), 메서드, 필드, 파라미터 등 다양한 곳에 붙일 수 있다.</p>
+<h4 id="2-value-속성">2. value 속성</h4>
+<pre><code class="language-java">public @interface MyAnnotation {
+	String value();
+}
+
+// 입력할 요소가 value 하나라면, 속성명을 생략할 수 있다
+@MyAnnotation(&quot;Hello world!&quot;)
+public class MyClass { ... }
+
+// 위 코드는 다음과 같다
+@MyAnnotation(value = &quot;Hello world!&quot;)
+public class MyClass { ... }</code></pre>
+<p>Java는 애노테이션의 <code>value</code> 속성에 한해서 위와 같은 축약을 허용한다.<br>
+입력할 요소가 딱 하나면서 그 이름이 <code>value</code>라면, 속성명을 생략할 수 있다.</p>
+<h4 id="3-배열-속성">3. 배열 속성</h4>
+<pre><code class="language-java">public @interface MyAnnotation {
+	int[] numbers();
+}
+
+// 배열 요소가 하나라면, 중괄호를 생략할 수 있다
+@MyAnnotation(numbers = 1)
+public class MyClass { ... }
+
+// 배열 요소가 여럿이라면 생략할 수 없다
+@MyAnnotation(numbers = {1, 2, 3})
+public class MyClass { ... }</code></pre>
+<p>배열 속성의 경우, 요소가 하나라면 중괄호를 생략해 값을 지정할 수 있다. (생략하지 않아도 무방하다.)</p>
+<hr>
+<h3 id="메타-애노테이션">메타 애노테이션</h3>
+<h4 id="1-메타-애노테이션이란">1. 메타 애노테이션이란?</h4>
+<pre><code class="language-java">@Retention(RetentionPolicy.RUNTIME) // ← 메타 애노테이션
+public @interface MyAnnotation {
+}</code></pre>
+<p>애노테이션을 정의하는데 사용하는 특별한 애노테이션을 <strong>메타 애노테이션</strong>이라고 부른다.</p>
+<h4 id="2-retention">2. @Retention</h4>
+<pre><code class="language-java">// 소스 코드에만 남아있고, 컴파일 시점에 제거된다
+@Retention(RetentionPolicy.SOURCE)
+public @interface MyAnnotation {
+}
+
+// 컴파일 후 .class 파일까지는 담아있지만, Java 실행 시점에 제거된다
+@Retention(RetentionPolicy.CLASS)
+public @interface MyAnnotation {
+}
+
+// Java 실행 중에도 남아있다
+@Retention(RetentionPolicy.RUNTIME)
+public @interface MyAnnotation {
+}</code></pre>
+<p>애노테이션의 <strong>생존 기간</strong>을 지정하는 메타 애노테이션이다.<br>
+<code>value</code> 속성으로 <code>RetentionPolicy</code>를 지정하면 되며, 값마다 다음과 같이 동작한다.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="article-table"><table><thead><tr><th>정책</th><th>설명</th></tr></thead><tbody><tr><td><strong>SOURCE</strong></td><td>애노테이션이 소스 코드에만 남아있는다.<br>컴파일 시점에는 제거된다.</td></tr><tr><td><strong>CLASS</strong></td><td>애노테이션이 컴파일된 <code>.class</code> 파일에까지 남아있는다.<br>Java 실행 시점에 제거된다.<br>기본 값이므로, 지정하지 않으면 이 정책으로 동작한다.</td></tr><tr><td><strong>RUNTIME</strong></td><td>애노테이션이 Java 실행 중에도 남아있는다.<br>리플렉션 등에 활용하기 위해선 이 정책을 사용해야 한다.</td></tr></tbody></table></div>
+<h4 id="3-target">3. @Target</h4>
+<pre><code class="language-java">// 클래스 혹은 인터페이스에 적용할 수 있다
+@Target(ElementType.TYPE)
+public @interface MyAnnotation {
+}
+
+// 메서드에 적용할 수 있다
+@Target(ElementType.METHOD)
+public @interface MyAnnotation {
+}</code></pre>
+<p>애노테이션을 <strong>적용할 수 있는 위치</strong>를 지정하는 메타 애노테이션이다.</p>
+<pre><code class="language-java">@Documented
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.ANNOTATION_TYPE)
+public @interface Target {
+	ElementType[] value();
+}</code></pre>
+<p>Target 애노테이션은 <code>ElementType[]</code>을 지니고 있으니, 애노테이션을 다양한 위치에 적용 가능하게 만들 수도 있다.</p>
+<pre><code class="language-java">public enum ElementType {
+	TYPE,
+	FIELD,
+	METHOD,
+	PARAMETER,
+	CONSTRUCTOR,
+	LOCAL_VARIABLE,
+	ANNOTATION_TYPE,
+	PACKAGE,
+	TYPE_PARAMETER,
+	TYPE_USE,
+	MODULE,
+	RECORD_COMPONENT;
+}</code></pre>
+<p><code>ElementType</code>의 종류는 위와 같다.</p>
+<h4 id="4-documented">4. @Documented</h4>
+<pre><code class="language-java">@Documented
+public @interface MyAnnotation {
+}</code></pre>
+<p>해당 애노테이션이 적용된 요소에 대한 API 문서(Javadoc)에, 해당 애노테이션의 존재를 표시하게 만든다.<br>
+<code>@Documented</code>가 지정되지 않으면, Javadoc 도구가 문서를 생성할 때 해당 애노테이션 정보를 제외한다.</p>
+<h4 id="5-inherited">5. @Inherited</h4>
+<h5 id="5-1-상속이-되는-경우와-안-되는-경우">5-1. 상속이 되는 경우와 안 되는 경우</h5>
+<pre><code class="language-java">// 이 애노테이션이 자식 클래스에게까지 상속된다
+@Inherited
+public @interface MyAnnotation {
+}
+
+// 클래스의 상속에는 애노테이션이 상속된다
+@MyAnnotation
+public class ParentClass { }
+
+public class Child extends ParentClass { } // Child에도 MyAnnotation이 적용된다
+
+// 인터페이스의 구현에는 애노테이션이 상속되지 않는다
+@MyAnnotation
+public interface ParentInterface { }
+
+public class Child implements ParentInterface { } // Child에 MyAnnotation이 적용되지 않는다</code></pre>
+<p><code>@Inheried</code>는 해당 애노테이션을 자식 클래스에게까지 상속하도록 만드는 역할을 한다.</p>
+<p>단, 클래스 상속에서만 동작하고, 인터페이스의 구현체에는 동작하지 않는다.</p>
+<h5 id="5-2-인터페이스-구현에는-왜-적용되지-않을까">5-2. 인터페이스 구현에는 왜 적용되지 않을까?</h5>
+<p>클래스의 상속은, 자식 클래스가 부모 클래스의 속성과 메서드를 상속받는다는 개념이다.<br>
+즉, 자식 클래스가 부모 클래스의 특성을 이어받는다.</p>
+<ul>
+<li>때문에, 부모 클래스에 정의된 애노테이션을 자식 클래스가 상속받는 것이 자연스럽다.</li>
+</ul>
+<p>반면 인터페이스는 메서드의 시그니처를 정의할 뿐, 상태나 행위를 가지지 않는다.</p>
+<ul>
+<li>때문에, 구현체가 인터페이스의 애노테이션을 상속받는 것이 어색하다.</li>
+<li>따라서, 인터페이스의 어노테이션을 구현체가 상속받지 않도록 설계되었다.</li>
+</ul>
+<hr>
+<h3 id="애노테이션-조회하기">애노테이션 조회하기</h3>
+<pre><code class="language-java">Class&lt;MyClass&gt; myClass = MyClass.class;
+
+MyAnnotation annotation = myClass.getAnnotation(MyAnnotation.class);</code></pre>
+<p><code>Class</code>, <code>Method</code>, <code>Field</code>에는 <code>getAnnotation</code>, <code>getAnnotations</code>, <code>getDeclaredAnnotation</code>, <code>isAnnotationPresent</code> 등의 메서드가 존재한다.</p>
+<p>해당 메서드를 통해 클래스/메서드/필드에 적용된 애노태이션들을 조회할 수 있다.</p>
+<hr>
+<h3 id="java가-기본으로-제공하는-애노테이션">Java가 기본으로 제공하는 애노테이션</h3>
+<h4 id="1-override">1. @Override</h4>
+<pre><code class="language-java">@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.SOURCE)
+public @interface Override {
+}</code></pre>
+<p>메서드 <strong>재정의가 정확한지 컴파일러가 확인</strong>할 때 사용한다.</p>
+<p>그렇기 때문에, <code>RetentionPolicy.SOURCE</code>를 사용해서 컴파일 시점에 제거한다.</p>
+<h4 id="2-deprecated">2. @Deprecated</h4>
+<pre><code class="language-java">@Documented
+@Retention(RetentionPolicy.RUNTIME)
+@Target(value={CONSTRUCTOR, FIELD, LOCAL_VARIABLE, METHOD, PACKAGE, MODULE, PARAMETER, TYPE})
+public @interface Deprecated {
+	String since() default &quot;&quot;;
+	boolean forRemoval() default false;
+}</code></pre>
+<p>더는 <strong>사용을 권장하지 않는 요소</strong>를 표시할 때 사용한다.</p>
+<p>주로 다음과 같은 이유로 <code>@Deprecated</code>를 사용한다.</p>
+<ol>
+<li>해당 요소가 잠재적인 문제점을 지니고 있다.</li>
+<li>향후 버전에서 호환되지 않거나 제거될 수 있다.</li>
+<li>더 나은 최신 요소로 대체되었다.</li>
+<li>더 이상 사용되지 않는 기능이다.</li>
+</ol>
+<p>각 속성은 다음과 같다.</p>
+<ul>
+<li><code>since</code>: 더 이상 사용하지 않게 된 버전의 정보를 의미한다.</li>
+<li><code>forRemoval</code>: 향후 버전에 제거될 것인지 여부를 의미한다.</li>
+</ul>
+<h4 id="3-suppresswarnings">3. @SuppressWarnings</h4>
+<pre><code class="language-java">@Retention(RetentionPolicy.SOURCE)
+public @interface SuppressWarnings {
+	String[] value();
+}</code></pre>
+<p>Java <strong>컴파일러의 경고를 억제</strong>(Suppress)할 때 사용한다.</p>
+<p>개발자가 해당 문제를 잘 알고 있기 때문에 컴파일러가 경고하지 않아도 됨을 나타낸다.</p>
+<p>자주 사용되는 <code>value</code>는 다음과 같다.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="article-table"><table><thead><tr><th>값</th><th>설명</th></tr></thead><tbody><tr><td><strong>unused</strong></td><td>사용되지 않는 변수/메서드/필드에 대한 경고를 억제한다.</td></tr><tr><td><strong>deprecation</strong></td><td>사용이 권장되지 않는 코드에 대한 경고를 억제한다.</td></tr><tr><td><strong>rawTypes</strong></td><td>제네릭 raw 타입에 대한 경고를 억제한다.</td></tr><tr><td><strong>unchekced</strong></td><td>제네릭 타입과 관련된 캐스팅 경고를 억제한다.<br>ex) <code>List&lt;String&gt; strList = (List&lt;String&gt;) rawList;</code></td></tr><tr><td><strong>all</strong></td><td>모든 경고를 억제한다.</td></tr></tbody></table></div>
+<hr>
+<h3 id="마치며">마치며</h3>
+<p>애노테이션 역시 리플렉션처럼 활용은 무궁무진하지만 기본 문법은 단순하다.<br>
+이제 리플렉션과 애노테이션을 모두 사용할 수 있으니, Spring Framework가 제공하는 다양한 기능을 직접 만들어볼 수 있을 것 같다.<br>
+다음에 기회가 된다면, 이전에 직접 만든 프레임워크를 개선하며 새로운 기능을 추가해봐야겠다.</p>

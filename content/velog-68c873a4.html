@@ -1,0 +1,51 @@
+<!--
+{
+  "title": ".gitignore가 동작하지 않는다면 주석을 확인해라",
+  "summary": "ChatGPT가 주석을 좋아하는것은 바이브 코딩을 시도해본 사람이라면 모두 알고 있을 것이다.주석은 당연히 파일 동작에 영향을 끼치지 않으므로 호불호가 갈릴 영역일 뿐이지만, .gitignore에서는 얘기가 다르다.\\*\\*.gitignore에서는 첫 단어가 위와 같이 ",
+  "date": "2025-05-22T08:48:50.868Z",
+  "category": "tech"
+}
+-->
+<pre><code class="language-null"># === Gradle / Kotlin ===
+.gradle/                         # Gradle 캐시
+build/                           # 빌드 산출물 전체
+out/                             # IntelliJ 산출물
+
+# Kotlin/JS 전용 캐시 (루트에 보이는 것들)
+.kotlin/                         # Kotlin Gradle 플러그인 캐시g
+kotlin-js-store/                 # Kotlin/JS Yarn 캐시
+
+# === Node / npm / Yarn ===
+node_modules/                    # npm 의존성
+npm-debug.log*                   # npm 오류 로그
+yarn-debug.log*                  # Yarn 오류 로그
+yarn-error.log*                  # Yarn 오류 로그
+.pnpm-debug.log*                 # pnpm 오류 로그
+
+# lock 파일 (프로젝트 정책에 따라 관리할지 결정)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# === 환경변수 파일 ===
+.env                             # 실제 env
+.env.*.local                     # 로컬별 env
+!.env.example                    # 예시는 커밋
+
+# === IDE ===
+.idea/                           # IntelliJ 설정
+*.iml                            # 모듈 파일
+
+.vscode/                         # VSCode 설정
+
+# === macOS ===
+.DS_Store
+
+# === 로그 &amp; 임시파일 ===
+*.log
+*.tmp</code></pre>
+<p>ChatGPT가 주석을 좋아하는것은 바이브 코딩을 시도해본 사람이라면 모두 알고 있을 것이다.<br>
+위와 같은 주석은 당연히 파일 동작에 영향을 끼치지 않으므로 호불호가 갈릴 영역일 뿐이지만, <code>.gitignore</code>에서는 얘기가 다르다.</p>
+<p><strong>.gitignore에서는 첫 단어가 #인 줄만 주석으로 처리한다!</strong><br>
+위와 같이 ChatGPT가 주석으로 파일을 난도질 해 두었다면, Git은 <code>.env # 실제 env</code>라는 경로를 무시하라는 것으로 인식하고, <code>.env</code>파일을 무시하지 않고 소중히 대해준다.<br>
+<code>.gitignore</code>에서는 첫 단어가 <code>#</code>인 경우에만 주석으로 판단한다는 것. 잘 기억하길 바란다.</p>

@@ -1,0 +1,215 @@
+<!--
+{
+  "title": "초록스터디 1주차 회고",
+  "summary": "개요\n성공회대 초록스터디에 참여하게 됐다. 코드 리뷰를 받는것과 페어 프로그래밍을 하는 것 모두 처음이지만 좋은 경험이 되었다.\n특히, 쉬워보였던 미션이지만 구현하며 생각보다 많은 어려움을 겪어 놀랐다. 언제나 겸손 또 겸손하자...\n\n새로 배운 것\n한글을 사용하자?\n",
+  "date": "2025-02-09T12:14:43.036Z",
+  "category": "retrospect",
+  "cover": "/assets/velog/d46b596ed99fea8d0054.jpg",
+  "coverAlt": "초록스터디 1주차 회고"
+}
+-->
+<h2 id="개요">개요</h2>
+<p>성공회대 초록스터디에 참여하게 됐다. 코드 리뷰를 받는것과 페어 프로그래밍을 하는 것 모두 처음이지만 좋은 경험이 되었다.<br>
+특히, 쉬워보였던 미션이지만 구현하며 생각보다 많은 어려움을 겪어 놀랐다. 언제나 겸손 또 겸손하자...</p>
+<h2 id="새로-배운-것">새로 배운 것</h2>
+<h3 id="한글을-사용하자">한글을 사용하자?</h3>
+<blockquote>
+<p>어떤 언어로 작성되는 것이 정답이다!는 없는 것 같아요. 함께 또는 스스로 정한 약속을 지키면서 일관성을 유지하는 것이 더욱 중요하다고 생각해요.</p>
+<ul>
+<li>YehyeokBang(초록스터디 리뷰어)</li>
+</ul>
+</blockquote>
+<pre><code class="language-java">@Test
+@DisplayName(&quot;양수와 양수를 더한다&quot;)
+void addPositiveWithPostivie() {
+	int expectedValue = 1 + 2;
+	int actualValue = myCalculator.add(1, 2);
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;
+    assertThat(actualValue).isEqualTo(expectedValue);
+}</code></pre>
+<p>그동안 항상 예외 메시지나 @DisplayName에 한글을 사용해도 될지 고민이 많았다.<br>
+한글로 작성한 예외 메시지의 경우, 개발자가 의도적으로 throw한 예외(한글)와 의도치 않게 발생한 예외(영어)가 쉽게 구분되므로 이점이 크다고 느꼈다.(작성도 한글이 쉬운건 덤!)<br>
+그럼에도 막연하게 '코드에 한글을 써도 되는건가?'라는 의문이 있었는데, 팀 내 컨벤션을 준수한다면 한글이어도 괜찮다는 가르침을 받았다.<br>
+앞으로는 컨벤션을 정할 때 예외 메시지와 @DisplayName에 한글을 사용하자고 건의해 봐야겠다.</p>
+<h3 id="조건문을-메서드로-추출하자">조건문을 메서드로 추출하자</h3>
+<pre><code class="language-java">public int divide(int dividend, int divisor) {
+	if (isZero(divisor)) {
+        &#9;throw new ArithmeticException(&quot;0으로 나눌 수 없습니다.&quot;);
+    }
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;
+    return dividend / divisor;
+}
+
+private boolean isZero(int value) {
+	return value == 0;
+}</code></pre>
+<p>조건문을 메서드로 추출한다라, 이번 스터디 때 처음 본 코드 스타일이었다.<br>
+조건문을 메서드로 추출하면, 메서드명을 통해 해당 조건문의 의미를 쉽게 이해할 수 있어 가독성이 향상된다. 메서드 내 코드가 간결해지는건 덤!<br>
+위와 같은 간단한 예제만으로는 잘 와닿지 않을 수 있다.<br>
+<img src="/assets/velog/67632980c22f750db7d0.png" alt="" loading="lazy"><br>
+위의 validateStringNumber() 메서드는 파라미터로 &quot;123&quot;과 같은 문자열 형식의 숫자를 전달받고, 그 값이 비즈니스 로직 제약조건(음수와 실수 X)을 준수하고 있는지 검증하는 메서드이다.<br>
+if문 안에 사용된 isIntegerString()과 isFloatNumber(), isNegative()를 보면, 해당 조건문이 어떤 의미를 가지는지 한 눈에 들어오는 것을 확인할 수 있을 것이다.</p>
+<h3 id="테스트-제목으로-동작을-설명하자">테스트 제목으로 동작을 설명하자</h3>
+<pre><code class="language-java">@Test
+@DisplayName(&quot;더하기: 정상&quot;) // 정상?? 뭐가??
+void addNormal() {
+	int expectedValue = 1 + 2;
+	int actualValue = myCalculator.add(1, 2);
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;
+    assertThat(actualValue).isEqualTo(expectedValue);
+}
+
+@Test
+@DisplayName(&quot;양수와 양수를 더한다&quot;) // 양수와 양수를 더하는 케이스를 테스트하는구나!
+void addPositiveWithPostivie() {
+	int expectedValue = 1 + 2;
+	int actualValue = myCalculator.add(1, 2);
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;
+    assertThat(actualValue).isEqualTo(expectedValue);
+}</code></pre>
+<p>기존에는 정상 상황과 예외 상황으로 구분해 테스트 메서드를 작성했었다.(예시 코드의 위와 비슷하게)<br>
+하지만 '정상'과 같은 제목으로는 해당 테스트가 정확히 어떤 일을 하는지 알지 못한다.(해당 메서드 안에 모든 정상 상황을 테스트 할것도 아니지 않는가)<br>
+그러므로 테스트의 제목은 '양수와 양수를 더한다'처럼 동작으로 지어서, 테스트의 목적을 충분히 설명하도록 하자.</p>
+<h3 id="메서드-작명이-어렵다면-단일-책임-원칙srp을-지키고-있는지-확인하자">메서드 작명이 어렵다면 단일 책임 원칙(SRP)을 지키고 있는지 확인하자</h3>
+<pre><code class="language-java">// 이름이 왜 이렇게 길지?
+private getSumAndValidateNotNegativeAndDigit(List&lt;String&gt; stringNumbers) {
+	int sum = 0;
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;
+    for (String stringNumber : stringNumbers) {
+        if (!isConsistsOfDigit(stringNumber)) {
+               &#9;throw new RuntimeException(&quot;숫자가 아닙니다!&quot;);
+        }
+        int number = Integer.parseInt(stringNumber);
+        if (!isNegative(number)) {
+            throw new RuntimeException(&quot;음수는 전달할 수 없습니다!&quot;);
+        }
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;
+        sum += number;
+    }
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;
+    return sum;
+}
+        &#9;&#9;</code></pre>
+<p>메서드의 이름 짓기가 너무 힘들었던 경험이 있는가? 대부분은 위와 같이 하나의 메서드가 너무 많은 책임을 가지고 있기 때문일 것이다.<br>
+위 메서드의 경우 검증에 대한 책임과 연산에 대한 책임을 모두 갖고 있기 때문에, 이름으로 모든 동작을 표현하기 힘들다. 다른 메서드가 검증에 대한 책임을 갖게 하고, 이 메서드는 검증이 완료된 값을 파라미터로 받아오도록 해서 연산에 대한 책임만 갖도록 수정해주자!</p>
+<h3 id="enum을-더-잘-활용해보자">enum을 더 잘 활용해보자!</h3>
+<pre><code class="language-java">public int calculate(int leftOperand, int rightOperand, Operator operator) {
+	return swtich (operator) {
+        case ADD -&gt; leftOperand + rightOperand;
+        case SUBTRACT -&gt; leftOperand - rightOperand;
+        case MULTIPLY -&gt; leftOperand * rightOperand;
+        case DIVIDE -&gt; leftOperand / rightOperand;
+    };
+}
+
+public enum Operator {
+	ADD, SUBTRACT, MULTIPLY, DIVIDE
+}
+</code></pre>
+<p>위의 예시 코드는 내가 상당히 애용했던 enum switch문이다.<br>
+하지만 연산에 대한 책임이 연산자를 의미하는 Operator에 있지 않고, calculate()라는 별도의 메서드에 존재한다.<br>
+나쁜 코드는 아니지만 아래처럼 수정해보는 것은 어떨까?</p>
+<pre><code class="language-java">public int calculate(int leftOperand, int rightOperand, Operator operator) {
+	return operator.operate(leftOperand, rightOperand);
+}
+
+public enum Operator {
+	ADD {
+        @Override
+        public int operate(int leftOperand, int rightOperand) {
+            return leftOperand + rightOperand;
+        }
+    },
+    SUBTRACT {
+        @Override
+        public int operate(int leftOperand, int rightOperand) {
+        &#9;return leftOperand - rightOperand;
+        }
+    },
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;
+    // ... 나머지 연산자 생략...
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;
+    abstract int operate(int leftOperand, int rightOperand);
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;
+    // 필요할 경우 아래처럼 메서드 구현 가능
+    private static void validateOverflow(int a, int b) {
+        // ...
+    }
+}</code></pre>
+<p>이제 연산에 대한 책임을 연산자가 가지게 되었다. 훨씬 논리적이고 자연스럽지 않은가?<br>
+또한 위와 같은 단순한 예제라면 '굳이...' 스러울 수도 있지만, 만약 연산이 오버플로우/언더플로우와 같은 다양한 상황을 검증해야 한다고 생각해보자.<br>
+Operator enum 안에서 모두 깔끔하게 해결할 수 있다!</p>
+<pre><code class="language-java">public void printString(String string, Greeting greeting) {
+	switch (greeting) {
+        case HELLO -&gt; System.out.println(&quot;Hello &quot; + string + &quot;!&quot;);
+        case HI -&gt; System.out.println(&quot;Hi &quot; + string + &quot;!&quot;);
+        // BYE를 빼먹어도 에러가 발생하지 않는다
+    }
+}
+
+public enum Greeting {
+	HELLO, HI, BYE
+}</code></pre>
+<p>또한, 이전 예제처럼 return과 결합한 switch문의 경우엔 모든 열거 상수를 적지 않으면 컴파일 에러를 일으키므로 검증하기 쉽지만, 위와 같이 return과 결합되지 않은 switch문은 enum의 모든 열거 상수를 적지 않더라도 컴파일 에러를 발생시키지 않는다.<br>
+지금 당장은 printString()에 모든 열거 상수를 넣으면 그만이지만, 만약 이후에 Greeting에 새로운 열거 상수가 추가된다면? Greeting을 사용한 모든 메서드를 일일이 찾아야 버그를 찾아낼 수 있을 것이다.</p>
+<p>default를 추가해 예외를 던지게 해도 결국 런타임에서야 문제를 파악할 수 있게 될 뿐더러, default를 기존에 사용하고 있다면 default로 예외를 던지게 할 수도 없다.<br>
+가장 좋은 에러는 컴파일 에러라는 것을 기억하자!</p>
+<h3 id="비슷한-여러-케이스를-테스트하고-싶다면-parameterizedtest를-사용하자">비슷한 여러 케이스를 테스트하고 싶다면 @ParameterizedTest를 사용하자</h3>
+<pre><code class="language-java">@Test
+@DisplayName(&quot;양수와 양수를 더한다&quot;)
+void addPositiveWithPostivie() {
+	// 이걸 일일이 다 적어야해?
+	int expectedValue1 = 1 + 2;
+	int actualValue1 = myCalculator.add(1, 2);
+    assertThat(actualValue1).isEqualTo(expectedValue1);
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;
+    int expectedValue2 = 5 + 2;
+	int actualValue2 = myCalculator.add(5, 2);
+    assertThat(actualValue2).isEqualTo(expectedValue2);
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;
+    int expectedValue3 = 10 + 5;
+	int actualValue3 = myCalculator.add(10, 5);
+    assertThat(actualValue3).isEqualTo(expectedValue3);
+}</code></pre>
+<p>코드를 딱 보는 순간 이건 아니다 싶을거다. 위에서는 고작 3줄씩이니까 중복 코드도 좀 참고 작성할 수 있겠지만, 만약 테스트 코드가 10줄이 넘어간다면? 그걸 수많은 케이스로 테스트하고 싶다면?<br>
+이런 사람들을 위해 @ParameterizedTest가 존재한다</p>
+<pre><code class="language-java">@ParameterizedTest
+@DisplayName(&quot;양수와 양수를 더한다&quot;)
+@CsvSource({&quot;1,2&quot;, &quot;5,2&quot;, &quot;10,5&quot;})
+void addPositiveWithPostivie(int a, int b) {
+	int expectedValue1 = a + b;
+	int actualValue1 = myCalculator.add(a, b);
+    assertThat(actualValue1).isEqualTo(expectedValue1);
+}</code></pre>
+<p>@ParameterizedTest와 @...Source 어노태이션을 사용하면 간결하고 편리한 테스트 코드를 작성할 수 있다.<br>
+아래 포스팅을 보면 여러 어노태이션에 대해 자세하게 설명되어 있다.<br>
+<a href="https://velog.io/@ohzzi/junit5-parameterizedtest">https://velog.io/@ohzzi/junit5-parameterizedtest</a></p>
+<h3 id="불변-컬렉션을-반환하자">불변 컬렉션을 반환하자!</h3>
+<pre><code class="language-java">public List&lt;Integer&gt; convertStringIntoInteger(List&lt;String&gt; strings) {
+	List&lt;Integer&gt; numbers = new ArrayList&lt;&gt;();
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;
+    for (String string : strings) {
+        int number = Integer.parseInt(string);
+        numbers.add(number);
+    }
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;
+    return Collections.unmodifiableList(numbers);
+}</code></pre>
+<p>위 메서드는 List 객체의 참조를 반환하고 있다. 하지만 만약 해당 List가 다른 곳에서 수정될 수 있도록 열러 있다면? 예상치 못한 사이드 이펙트가 어디서든 발생할 수 있게 된다.<br>
+이를 방지하기 위해 위와 같이 Collections.unmodifiableList()이나 List.copyOf() 등의 메서드를 사용해 불변 컬렉션을 반환하도록 하자!<br>
+stream API를 사용한다면 toList()를 통해 쉽게 불면 리스트를 반환할 수 있는 것도 알아두자!</p>
+<h3 id="매개변수는-수정하지-말자">매개변수는 수정하지 말자</h3>
+<pre><code class="language-null">public void printUppercaseInput(String input) {
+&#9;&#9;
+    if (containsDigit(input)) {
+        input = removeDigitString(input);
+    }
+&#32;&#32;&#32;&#32;&#32;&#32;&#32;&#32;
+    System.out.println(input.toUpperCase());
+}</code></pre>
+<p>위 메서드는 입력으로 받은 문자열에 숫자가 들어있을 경우, 해당 숫자를 제거하고 대문자로 출력하도록 구현되어 있다.<br>
+하지만 숫자를 제거하는 과정에서, 파라미터로 전달받은 input 자체를 수정한다는 문제점이 있다.<br>
+무엇이 문제일까?</p>
+<p>매개변수의 상태가 메서드 중간에 변하는 것(전체 입력값 -&gt; 숫자를 제거한 값)은 바람직하지 않다.<br>
+이는 코드를 이해하기 어렵게 만들며, 이런 식으로 매개변수의 상태가 많이 변할수록 경우의 수가 크게 증가해 유지보수가 어려워진다.<br>
+매개변수의 상태가 변한다면 그에 따라 적절한 변수에 할당해 주도록 하자!</p>

@@ -1,0 +1,62 @@
+<!--
+{
+  "title": "GitHub Actions에 Discord 연결하기",
+  "summary": "CI/CD가 성공하면 디스코드 알람이 오도록 해봅시다.",
+  "date": "2025-07-29T12:16:10.097Z",
+  "category": "tech",
+  "cover": "/assets/velog/e4ebc3de6a62eec8b854.jpg",
+  "coverAlt": "GitHub Actions에 Discord 연결하기"
+}
+-->
+<h3 id="개요">개요</h3>
+<p>GitHub Actions는 잘 적용 하셨나요?<br>
+CI/CD가 실패하면 바로 모든 팀원이 알아챌 수 있도록 Discork Webhook과 연결해 봅시다.</p>
+<h3 id="사전-작업">사전 작업</h3>
+<ol>
+<li>당연히 디스코드 채널이 있어야 합니다.</li>
+<li>역할별로 멘션을 보내고 싶다면 개발자 모드를 켜주세요(Discord 앱에서 설정 → 고급 → 개발자 모드)</li>
+</ol>
+<h3 id="웹후크-만들기">웹후크 만들기</h3>
+<p><img src="/assets/velog/8afe9d4f5f050fc28437.png" alt="" loading="lazy"><br>
+톱니바퀴 버튼을 눌러서 채널 편집으로 들어가 주세요.<br>
+웹후크는 채널별로 만들어지기 때문에, 알림을 받고 싶은 채널을 골라주세요.</p>
+<p><img src="/assets/velog/c91195d6ca4c6ffeb099.png" alt="" loading="lazy"><br>
+웹후크 만들기 버튼을 눌러서 웹후크를 만들고, 만들어진 웹후크의 URL을 저장해 두세요.</p>
+<h3 id="actions-secrets-추가하기">Actions secrets 추가하기</h3>
+<p>다음 Secrets를 추가해 주세요(이름은 달라도 괜찮아요)<br>
+1. DISCORD_WEBHOOK_URL (필수)<br>
+- 아까 저장한 웹후크의 URL을 입력해 주세요.<br>
+2. DISCORD_ROLE_ID (선택)<br>
+- 만약 멘션을 역할별로 보내고 싶다면, 역할 ID를 입력해 주세요.<br>
+- 역할 아이디는 '서버 설정 → 역할 → 기타 → 역할 ID 복사하기'에서 확인할 수 있어요(개발자 모드가 켜져 있어야 해요)</p>
+<h3 id="워크플로우-수정하기">워크플로우 수정하기</h3>
+<pre><code class="language-yaml">jobs:
+  build_and_push:
+  &#9;# ... 빌드하고 푸쉬 ...
+&#32;&#32;&#32;&#32;
+  deploy:
+  &#9;# ... 배포 ...
+    steps:
+      # ... 배포 ...
+      - name: Send Discord Notification
+        if: always()
+        run: |
+          STATUS=&quot;${{ job.status }}&quot;
+          if [ &quot;$STATUS&quot; = &quot;success&quot; ]; then
+            MSG=&quot;✅ CI/CD 성공!&quot;
+          else
+            MSG=&quot;❌ CI/CD 실패! &lt;@&amp;${{ secrets.DISCORD_ROLE_ID }}&gt;&quot;
+          fi
+
+          RUN_URL=&quot;https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}&quot;
+          curl -H &quot;Content-Type: application/json&quot; \
+               -X POST \
+               -d &quot;{\&quot;content\&quot;: \&quot;${MSG}\n🔗 [로그 확인하기](${RUN_URL})\&quot;}&quot; \
+               ${{ secrets.DISCORD_WEBHOOK_URL }}</code></pre>
+<p>위와 같이 맨 마지막 단계에 Discord 알림을 보내는 작업을 추가해 주세요.<br>
+<code>job.status</code>를 통해 작업 성공/실패 여부를 확인할 수 있어요.</p>
+<p><code>&lt;@&amp; ROLE_ID &gt;</code> 형식으로 특정 역할을 멘션하게 만들 수 있어요.<br>
+Actions Secrets과 같이 쓰면 위와 같이 <code>&lt;@&amp;${{ secrets.SECRET_이름 }}&gt;</code>처럼 적으시면 됩니다.</p>
+<h3 id="성공">성공!</h3>
+<p><img src="/assets/velog/3093d4527f3bf8af8ead.png" alt="" loading="lazy"></p>
+<p>CI/CD에 문제가 없다면 이렇게 알림이 오는 것을 확인할 수 있어요 🥳</p>
