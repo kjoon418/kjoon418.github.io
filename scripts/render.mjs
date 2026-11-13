@@ -82,10 +82,9 @@ function card(post) {
   return `<li><article class="post-card">
     <a class="card-link" href="${post.path}" aria-labelledby="post-${post.slug}-title">
       ${cover}
-      <div class="card-meta"><span class="category-label">${post.category.label}</span></div>
       <h3 class="card-title" id="post-${post.slug}-title">${escape(post.title)}</h3>
       <p class="card-summary">${escape(post.summary)}</p>
-      ${date(post, 'card-date')}
+      <div class="card-meta"><span class="category-label">${post.category.label}</span><span aria-hidden="true">·</span>${date(post, 'card-date')}</div>
     </a>
   </article></li>`;
 }

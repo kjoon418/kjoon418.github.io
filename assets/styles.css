@@ -66,11 +66,10 @@ div.card-cover { display: flex; align-items: center; justify-content: center; }
 .card-link:hover .card-cover { filter: brightness(.96); }
 .card-link:hover .card-title { text-decoration: underline; text-underline-offset: 3px; }
 .card-meta, .article-meta { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 13px; }
-.card-meta { margin-top: 11px; }
+.card-meta { margin-top: 8px; font-size: 12px; }
 .category-label { color: var(--muted); }
 .card-title { margin: 8px 0 0; font-size: clamp(16px, 1.6vw, 19px); line-height: 1.45; letter-spacing: -.035em; overflow-wrap: anywhere; }
 .card-summary { margin: 6px 0; color: var(--muted); font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; }
-.card-date { display: block; margin-top: 8px; color: var(--muted); font-size: 12px; }
 .empty-state { display: grid; place-content: center; justify-items: center; min-height: 190px; padding: 24px 16px; text-align: center; }
 .empty-state h3 { margin: 0; font-size: 17px; letter-spacing: -.035em; }
 .empty-state p { margin: 9px 0 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
