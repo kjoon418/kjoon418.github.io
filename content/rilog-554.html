@@ -1,0 +1,46 @@
+<!--
+{
+  "title": "[시스템 디자인] 분산 로깅 설계",
+  "summary": "왜 분산 로깅이 필요한가? 한 서비스가 여러 구성요소를 사용할 수 있는데, 로그는 구성요소마다 각각 쌓인다. 로그가 요소마다 쌓여 있으면 어떤 문제가 생길까? 어떤 문제를 분석하고 싶을 때, 각 구성요소에 일일히 들어가서 로그를 찾아봐야 해서 시간이 오래 걸린다. 심지어는, 구성요소의…",
+  "date": "2026-11-12T07:10:00.588Z",
+  "category": "tech",
+  "cover": "/assets/rilog/554-cover.png",
+  "coverAlt": "[시스템 디자인] 분산 로깅 설계"
+}
+-->
+<h2 id="왜-분산-로깅이-필요한가?">왜 분산 로깅이 필요한가?</h2>
+<figure class="rilog-figure"><img src="/assets/rilog/554-image-1.png#2172x724" alt="image.png" width="550" loading="lazy"></figure>
+<p>한 서비스가 여러 구성요소를 사용할 수 있는데, 로그는 구성요소마다 각각 쌓인다. <br>로그가 요소마다 쌓여 있으면 어떤 문제가 생길까?</p>
+<figure class="rilog-figure"><img src="/assets/rilog/554-image-2.png#1774x887" alt="image.png" width="550" loading="lazy"></figure>
+<p>어떤 문제를 분석하고 싶을 때, 각 구성요소에 일일히 들어가서 로그를 찾아봐야 해서 <strong>시간이 오래</strong> 걸린다. <br>심지어는, 구성요소의 인스턴스를 재시작하면 그 컨테이너 안에 있던 <strong>로그가 사라진다</strong>.</p>
+<p>분산 로깅의 다음 기능들을 통해 문제를 해결할 수 있다.</p>
+<p>1. 여러 구성요소의 로그를 <strong>한 곳에서 확인</strong>하는 기능</p>
+<p>2. 로그를 <strong>계속 보관</strong>하는 기능</p>
+<h3 id="로그를-잘-작성해보자">로그를 잘 작성해보자</h3>
+<p>이젠, 분산 로깅을 사용할 때 로그를 어떻게 작성해야 하는지 알아보자.</p>
+<h4 id="필드-이름을-통일하자">필드 이름을 통일하자</h4>
+<figure class="rilog-figure"><img src="/assets/rilog/554-image-3.png#1752x897" alt="image.png" width="512" loading="lazy"></figure>
+<p>구성요소마다 로그의 필드 이름이 다르다면, 여러 구성요소의 로그를 한 번에 찾을 수 없다. <br>의미가 같은 필드라면, 어느 구성요소에서든 같은 이름을 사용하기로 약속하자.</p>
+<h4 id="개인-정보는-담지-말자">개인 정보는 담지 말자</h4>
+<figure class="rilog-figure"><img src="/assets/rilog/554-image-4.png#1752x649" alt="image.png" width="538" loading="lazy"></figure>
+<p>로그에 개인정보를 담으면, 그 개인정보는 언제든 검색될 수 있는 상태로 몇 달씩 보관된다. <br>개인정보는 남기지 말고, 그 개인정보를 찾을 수 있는 식별자만 남기자.</p>
+<p>또, 실수로 개인정보가 로그에 보관되는 것도 막도록 하자. <br>로그 저장소에 넣기 전, 개인정보 형태의 값(메일 주소, 전화번호 등)을 한 번 더 지우게 만들자.</p>
+<h4 id="로그-생성은-비동기로">로그 생성은 비동기로</h4>
+<figure class="rilog-figure"><img src="/assets/rilog/554-image-5.png#1753x897" alt="image.png" width="500" loading="lazy"></figure>
+<p>로그 생성이 몰리거나 디스크가 느려지더라도, 요청 처리까지 느려지면 안된다. <br>로그는 메모리의 작은 큐에 넣고, <strong>비동기로 처리</strong>되도록 만들자.</p>
+<p>이 때, 큐가 가득 차더라도 기다리는 대신 로그를 버린다. 로그는 몇 개 정도 유실되어도 괜찮은 데이터로 취급하기 때문이다. <br>따라서, <strong>하나도 유실하면 안 되는 데이터는 로그로 다루지 말고, 별도로 저장</strong>한다.</p>
+<h4 id="트레이스로-로그를-연결하자">트레이스로 로그를 연결하자</h4>
+<figure class="rilog-figure"><img src="/assets/rilog/554-image-6.png#1774x887" alt="image.png" width="518" loading="lazy"></figure>
+<p>같은 요청이라면 같은 트레이스로 연결되도록, 로그에 <strong>trace_id</strong> 필드를 꼭 담아주자.</p>
+<p>한 요청을 여러 구성요소에 걸쳐 처리한다면, 요청이 <strong>다른</strong> 구성요소<strong>로 넘어갈 때 trace_id도 같이 전달</strong>해주자. <br>그래야 여러 구성요소에 걸친 요청도 한 트레이스로 모아 볼 수 있다.</p>
+<h4 id="일부만-저장하자">일부만 저장하자</h4>
+<figure class="rilog-figure"><img src="/assets/rilog/554-image-7.png#1754x897" alt="image.png" width="494" loading="lazy"></figure>
+<p>모든 요청에 대한 로그를 저장하면, 너무 많은 저장 공간이 필요해진다. <br>일부 요청만 로그로 남겨서, 보관 부담을 줄여보자.</p>
+<p>일정 비율만 로그로 남기는 방식을 샘플링이라고 하는데, 크게 2가지로 구분할 수 있다.</p>
+<p>1. <strong>헤드 샘플링</strong>: 로그로 남길지 말지를 <strong>요청이 시작할 때</strong> 정한다.</p>
+<p>- 장점: 단순하다</p>
+<p>- 단점: 문제가 생긴 요청에 대한 로그까지 버릴 수 있다</p>
+<p>2. <strong>테일 샘플링</strong>: 로그로 남길지 말지를 <strong>요청이 끝난 뒤</strong> 정한다.</p>
+<p>- 장점: 문제가 생긴 로그는 비율에 상관 없이 보존할 수 있다</p>
+<p>- 단점: 요청이 끝날 때 까지, 수집기가 그 요청에 대한 로그를 보관하고 있어야 한다.</p>
+<p>헤드 샘플링을 사용하면, 단순히 비율만큼의 로그만 남기니 중요한 로그(오류 혹은 지연이 발생한 요청에 대한 로그)까지 버리게 된다. <br>테일 샘플링을 사용해 중요한 로그는 항상 보관할 수 있게 만들자.</p>

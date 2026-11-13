@@ -1,0 +1,102 @@
+<!--
+{
+  "title": "[시스템 디자인] 분산 메시지 큐 설계",
+  "summary": "고객이 음식을 주문하면 사장님 태블릿에 주문을 표시해야 한다고 가정해보자. 고객이 음식을 주문한다. 주문이 서버에 저장된다 → 고객이 ‘주문 성공’을 응답받는다. 사장님 태블릿에 새로운 주문이 표시된다 주문이 서버에 저장됐다면, 반드시 사장님 태블릿에도 표시되어야 한다. 이를 어떻게…",
+  "date": "2026-11-06T08:23:04.014Z",
+  "category": "tech",
+  "cover": "/assets/rilog/513-cover.png",
+  "coverAlt": "[시스템 디자인] 분산 메시지 큐 설계"
+}
+-->
+<p>고객이 <strong>음식을 주문</strong>하면 <strong>사장님 태블릿에 주문을 표시</strong>해야 한다고 가정해보자.</p>
+<ol>
+<li>고객이 음식을 주문한다.</li>
+<li>주문이 서버에 저장된다 → 고객이 ‘주문 성공’을 응답받는다.</li>
+<li>사장님 태블릿에 새로운 주문이 표시된다</li>
+</ol>
+<p>주문이 서버에 저장됐다면, <strong>반드시 사장님 태블릿에도 표시</strong>되어야 한다.<br>이를 어떻게 보장할 수 있을까?</p>
+<h3 id="이벤트-시스템을-단순하게-구현하면-발생하는-문제"><strong>이벤트 시스템을 단순하게 구현하면 발생하는 문제</strong></h3>
+<h4 id="0.-일단-구현해보기">0. 일단 구현해보기</h4>
+<p>이 기능을 단순하게 구현해보자.</p>
+<ol>
+<li>주문 서비스가 <strong>주문을 저장</strong>하고, 사용자에게 <strong>성공 응답</strong>을 보낸다.</li>
+<li>주문 서비스가 <strong>가게 서비스를 호출</strong>한다.</li>
+<li>가게 서비스가 사장님 <strong>태블릿으로 주문 정보를 전달</strong>한다.</li>
+</ol>
+<h4 id="1.-이벤트-발송에-실패할-수-있다-→-메시지-큐"><strong>1. 이벤트 발송에 실패할 수 있다 → 메시지 큐</strong></h4>
+<p>이렇게 구현하면 어떤 문제가 발생할 수 있을까?</p>
+<ol>
+<li>가게 서비스가 <strong>멈춘 동안 저장된 주문</strong>은, 사장님에게 <strong>전달되지 않는다.</strong>
+<ul>
+<li>주문 서비스는 <strong>주문 저장은 성공</strong>했다.<br>그러나, 가게 서비스가 멈췄으므로, 저장한 주문을 <strong>전달하는건 실패</strong>한다.</li>
+</ul></li>
+<li>가게 서비스의 처리량이 부족하다면, <strong>요청이 쌓일 때 </strong>지연되다가 <strong>실패</strong>할 수 있다.
+<ul>
+<li>주문 서비스의 처리량은 초당 300건, 가게 서비스의 처리량은 초당 200건이라고 가정해보자.</li>
+<li>초당 300건의 주문이 들어오면, <strong>주문 서비스는 처리</strong>했지만 <strong>가게 서비스</strong>에는 요청이 계속 쌓이다가 <strong>실패</strong>할 수 있다.<br>이때 실패하면, <strong>주문은 성공했으나 태블릿에 전달되지 않는다.</strong></li>
+</ul></li>
+</ol>
+<figure class="rilog-figure"><img src="/assets/rilog/513-image-1.png#1754x897" alt="exec-5b58ee68-c82e-4a02-b4a2-08c88ab62fbe.png" loading="lazy"><figcaption>메시지 큐가 이벤트를 보관해주니, 가게 서비스가 복구되면 이어서 처리할 수 있다</figcaption></figure>
+<p>가게 서비스가 멈추면, <strong>그 사이 발생한 이벤트(메시지)는 그대로 사라진다.</strong><br><strong>이벤트</strong>를 <strong>메시지 큐에 보관</strong>해서, 가게 서비스가 멈추더라도 이벤트가 보관되게 하자.</p>
+<p>메시지를 맡아 두는 큐 서버를 <strong>브로커(Broker)</strong>라고 부른다.<br>브로커 제품은, 처리한 메시지를 어떻게 관리하냐에 따라 다음과 같이 구분한다.</p>
+<ol>
+<li>작업 큐(Work queue)
+<ul>
+<li>소비자가 가져간 메시지를 <strong>‘처리중’으로 표시</strong>해 둔다.<br>소비자로부터 처리를 마쳤다는 알림(Ack)을 받으면, 해당 메시지를 제거한다.
+<ul>
+<li>알림(Ack) 없이 연결이 끊기거나 정해둔 시간이 지나면, 그 메시지를 다른 소비자에게 다시 넘겨서 처리한다.</li>
+</ul></li>
+<li>즉, <strong>처리한 메시지를 제거</strong>한다.</li>
+<li>RabbitMQ, Amazon SQS 같은 제품이 작업 큐에 해당한다.</li>
+</ul></li>
+<li>이벤트 로그(Event log)
+<ul>
+<li>메시지를 들어온 순서대로 저장하고, 메시지마다 <strong>오프셋</strong>(offset)이라는 일련번호를 매긴다.<br>소비자는, 메시지를 처리할 때 마다, 다음에 읽을 메시지의 <strong>오프셋을 브로커에 기록</strong>해둔다.<br>(ex_ 1007번 메시지를 처리했으면, 브로커에 1008번 오프셋을 기록한다)</li>
+<li>이 오프셋은 소비자 그룹마다 따로 관리하니, 한 메시지를 여러 그룹이 각각 다른 속도로 처리할 수 있다.<br>(ex_ 한 시점에 정산 그룹은 1007번 메시지부터 처리하고, 전송 그룹은 1010번 메시지부터 처리할 수 있다)</li>
+<li>즉, <strong>처리한 메시지를 보관</strong>한다.<br>(보존 기간이 지나야 제거한다)
+<ul>
+<li>덕분에, 버그로 인해 잘못 처리한 이벤트를 나중에 다시 처리하기 쉽다.</li>
+</ul></li>
+<li>Kafka 같은 제품이 이벤트 로그에 해당한다.</li>
+</ul></li>
+</ol>
+<h4 id="2.-메시지-큐에-이벤트를-전달하지-못할-수-있다-→-Outbox"><strong>2. 메시지 큐에 이벤트를 전달하지 못할 수 있다 → Outbox</strong></h4>
+<figure class="rilog-figure"><img src="/assets/rilog/513-image-2.png#1753x897" alt="exec-bf0ce5cd-e512-4f35-aae5-1e21ae637e7e.png" loading="lazy"><figcaption>주문은 저장했지만 이벤트는 발행하지 못해서 사라졌다.</figcaption></figure>
+<p>앞서서 가게 서비스에 문제가 생기더라도 이벤트는 보관할 수 있게 메시지 큐를 도입했다.<br>그러나, 여전히 <strong>주문은 성공했지만 메시지 큐에 이벤트를 전달하지 못할 가능성</strong>은 남아있다.</p>
+<p>주문을 저장하는 <strong>데이터베이스</strong>와 이벤트를 보관하는 <strong>큐</strong>는 서로 다른 시스템이기 때문에, <strong>한 트랜잭션으로 묶을 수 없기 때문</strong>이다.</p>
+<figure class="rilog-figure"><img src="/assets/rilog/513-image-3.png#2169x725" alt="exec-7c1cf7a0-3519-4d9d-97fa-9b415456b679.png" loading="lazy"><figcaption>서버는 주문과 이벤트를 한 트랜잭션으로 저장하고, 릴레이가 저장된 이벤트를 발송한다.</figcaption></figure>
+<p>주문 저장과 이벤트 생성을 한 트랜잭션으로 묶기 위해, <strong>Outbox 패턴</strong>을 사용할 수 있다.</p>
+<p><strong>Outbox 패턴</strong>이란?</p>
+<ul>
+<li>보낼 <strong>이벤트를 데이터베이스에 먼저 저장</strong>해 두는 방법이다.<br>주문을 저장할 때 이벤트도 같이 저장하니, <strong>주문과 이벤트가 한 트랜잭션</strong>에 묶인다.</li>
+<li><strong>릴레이</strong>라는 별도 프로그램을 따로 실행해서, <strong>아직 보내지 않은 이벤트를 큐로 보내고</strong>, 해당 행에 “이벤트를 발행했음”을 표시한다.
+<ul>
+<li>릴레이가 중간에 죽더라도 데이터베이스 행은 남아 있으니, 복구하고 나서 이어서 보낼 수 있다.</li>
+</ul></li>
+</ul>
+<h4 id="3.-이벤트가-중복-발송될-수-있다-→-Inbox"><strong>3. 이벤트가 중복 발송될 수 있다 → Inbox</strong></h4>
+<figure class="rilog-figure"><img src="/assets/rilog/513-image-4.png#1604x980" alt="exec-414f79f1-346e-425d-953b-0ba14844c9cc.png" loading="lazy"><figcaption>Outbox에 발행되었다는게 기록되지 않았으니, 같은 이벤트가 두 번 발행된다.</figcaption></figure>
+<p>릴레이를 사용해 문제를 해결하니, 또 다른 문제가 생겼다.<br>릴레이가 이벤트를 큐로 보낸 다음 <strong>데이터베이스에 표시하기 전에 죽으면</strong> 어떻게 될까?</p>
+<p>해당 이벤트는 전송되었지만 데이터베이스에는 반영되지 않았으므로, 나중에 그 <strong>이벤트를 또 발송</strong>하게 된다.<br>같은 이벤트가 여러 번 발송되더라도, <strong>받는 쪽에서 한 번만 처리</strong>해야 한다.</p>
+<figure class="rilog-figure"><img src="/assets/rilog/513-image-5.png#2170x725" alt="exec-88127f6d-0a15-44c7-a61e-f6e5849f6498.png" loading="lazy"><figcaption>Inbox가 중복 처리를 막는다</figcaption></figure>
+<p>같은 이벤트가 여러 번 발송되어도 한 번만 처리할 수 있게, <strong>Inbox 패턴</strong>을 사용할 수 있다.</p>
+<p><strong>Inbox 패턴</strong>이란?</p>
+<ul>
+<li><strong>처리한 이벤트의 id를 데이터베이스에 기록</strong>하는 방법이다.<br><strong>이벤트 id에 UNIQUE 제약 조건</strong>을 걸어서, 같은 이벤트를 한 번만 처리할 수 있게 만든다.
+<ul>
+<li><strong>작업 처리와 inbox 처리를 한 트랜잭션</strong>으로 묶어서, 이벤트 id가 중복되었다면 작업까지 롤백시킨다.</li>
+</ul></li>
+</ul>
+<h4 id="4.-이벤트-순서가-지켜지지-않을-수-있다-→-파티션-지정"><strong>4. 이벤트 순서가 지켜지지 않을 수 있다 → 파티션 지정</strong></h4>
+<figure class="rilog-figure"><img src="/assets/rilog/513-image-6.png#1755x896" alt="exec-755ddca0-ee82-47f5-86ed-504f190e0087.png" loading="lazy"><figcaption>주문 생성 → 주문 취소 순으로 적재되었지만, 그 순서로 처리됨을 보장하진 않는다.</figcaption></figure>
+<p>메시지 큐는 처리량을 늘리기 위해, 여러 소비자가 이벤트를 처리할 수 있게 한다.<br>따라서, ‘A 주문 생성’ 이벤트 이후에 ‘A 주문 취소’가 발생하더라도, 이 이벤트를 생성 → 취소 <strong>순서대로 처리하는걸 보장하지 않는다</strong>.</p>
+<figure class="rilog-figure"><img src="/assets/rilog/513-image-7.png#1920x819" alt="exec-998496e6-731a-4b80-8f22-16903bf86582.png" loading="lazy"><figcaption>같은 파티션에 들어온 이벤트들은, 들어온 순서대로 처리된다</figcaption></figure>
+<p>처리 순서를 보장해야 하는 이벤트들은 같은 파티션을 쓰게 만들어야한다.<br><strong>파티션 키</strong>가 같은 이벤트들은, <strong>같은 파티션에 들어가 순서대로 처리</strong>된다.</p>
+<figure class="rilog-figure"><img src="/assets/rilog/513-image-8.png#2148x732" alt="exec-a8572d20-aa7b-43a6-b207-fa483bea46e5.png" loading="lazy"><figcaption>가게 A가 인기가 많아서, 가게 A에 대한 파티션에 부하가 집중됐다.</figcaption></figure>
+<p>이 때, 특정 키에 이벤트가 몰리진 않는지 관찰해야 한다.<br>특정 키에 이벤트가 몰리면, 그 <strong>키가 매핑된 파티션에 부하가 집중</strong>된다.<br>이를 <strong>핫 파티션</strong>(hot partition)이라고 하고, 그 파티션의 소비자에 부하가 집중돼 지연이 발생할 수 있다.</p>
+<ul>
+<li>가게 ID를 파티션 키로 쓴다면, <strong>인기 가게의 파티션에만 이벤트가 몰릴 수 있다</strong>.<br>한 주문 안에서만 이벤트 순서를 지키면 된다면, <strong>가게 ID 대신 주문 ID를 키로 사용</strong>해 부하를 분산할 수 있다.</li>
+</ul>
+<h4 id="요약"><strong>요약</strong></h4>
+<div class="article-table"><table><tbody><tr><th colspan="1" rowspan="1"><p>발생하는 문제</p></th><th colspan="1" rowspan="1"><p>해결하는 방법</p></th></tr><tr><td colspan="1" rowspan="1"><p><strong>이벤트 수신자가 멈춘다</strong> 이벤트 수신자가 처리할 수 있는 양보다 많은 이벤트가 생긴다</p></td><td colspan="1" rowspan="1"><p><strong>메시지 큐</strong>에 쌓아 두어, 소비자가 본인 속도로 이벤트를 처리할 수 있게 한다</p></td></tr><tr><td colspan="1" rowspan="1"><p>작업은 처리했지만 <strong>이벤트 발행에 실패</strong>한다</p></td><td colspan="1" rowspan="1"><p>발행해야 하는 이벤트를 <strong>Outbox</strong>에 기록하고, <strong>릴레이</strong>가 전달하게 한다</p></td></tr><tr><td colspan="1" rowspan="1"><p>같은 이벤트를 <strong>중복 발행</strong>할 수 있다</p></td><td colspan="1" rowspan="1"><p><strong>inbox</strong>에 기록해서, 이벤트를 받는 쪽에서 중복 처리를 방지한다</p></td></tr><tr><td colspan="1" rowspan="1"><p>이벤트 간 <strong>순서가 보장</strong>되지 않는다</p></td><td colspan="1" rowspan="1"><p>순서를 보장해야 하는 이벤트가 같은 <strong>파티션</strong>에 보낸다</p></td></tr></tbody></table></div>
+<p>분산 메시지 큐를 사용할 때, 어떤 문제를 어떤 방법으로 해결하는지 알아보았다.</p>

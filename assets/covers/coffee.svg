@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
+  <rect width="640" height="360" fill="#e8d8c3"/>
+  <path d="M0 269 640 65m0 158L211 360M0 113 353 0" fill="none" stroke="#d6c2a9" stroke-width="2"/>
+  <g transform="rotate(-12 307 192)">
+    <rect x="137" y="107" width="147" height="171" rx="8" fill="#be9d80"/>
+    <rect x="132" y="101" width="147" height="171" rx="8" fill="#f4eade"/>
+    <path d="M151 101v171m21-118h77m-77 20h56m-56 20h72m-72 20h42" stroke="#c4a78b" stroke-width="2"/>
+    <circle cx="391" cy="191" r="106" fill="#c3a184"/><circle cx="385" cy="182" r="106" fill="#f3e7d7"/><circle cx="385" cy="182" r="89" fill="none" stroke="#dfcbb4" stroke-width="2"/>
+    <circle cx="455" cy="190" r="26" fill="none" stroke="#fff8ec" stroke-width="13"/>
+    <circle cx="385" cy="182" r="68" fill="#fff8ec"/><circle cx="385" cy="182" r="57" fill="#6a412d"/>
+    <path d="M350 178c16-27 46-18 52 4 5 18 24 16 32 1-4 40-57 59-81 27-8-10-7-20-3-32Z" fill="#b97f56"/>
+    <path d="M373 179c10-7 20-3 25 4 6 8 10 11 21 10-8 13-27 20-42 10-10-7-14-17-4-24Z" fill="#ead1a9"/>
+  </g>
+</svg>

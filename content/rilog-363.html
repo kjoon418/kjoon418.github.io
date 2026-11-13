@@ -1,0 +1,209 @@
+<!--
+{
+  "title": "테스트 실행 시간 64% 줄이기",
+  "summary": "테스트가 느려! 한창 백엔드 애플리케이션을 개발하던 중 동료가 불만을 제시했습니다. AI가 너무 느려! 쉬운 작업인데 왜 이렇게 오래 걸리는 거야? 저도 의아했습니다. 설계와 계획은 이미 끝났고, 지금 AI가 하는 작업은 길어도 30분이면 끝날 단순 구현 작업이었기 때문입니다. AI는…",
+  "date": "2026-11-01T14:52:22.709Z",
+  "category": "tech",
+  "cover": "/assets/rilog/363-cover.png",
+  "coverAlt": "테스트 실행 시간 64% 줄이기"
+}
+-->
+<h2 id="테스트가-느려!">테스트가 느려!</h2>
+<p>한창 백엔드 애플리케이션을 개발하던 중 동료가 불만을 제시했습니다.</p>
+<blockquote><em>AI가 너무 느려! 쉬운 작업인데 왜 이렇게 오래 걸리는 거야?</em></blockquote>
+<p>저도 의아했습니다.<br>설계와 계획은 이미 끝났고, 지금 AI가 하는 작업은 길어도 <strong>30분이면 끝날 단순 구현 작업</strong>이었기 때문입니다.</p>
+<p>AI는 총 50분 35초나 걸려서 작업을 마쳤고, 저는 AI에게 &quot;왜 이렇게 작업이 오래 걸린 거야?&quot;를 물어봤습니다.</p>
+<figure class="rilog-figure"><img src="/assets/rilog/363-image-1.png" alt="image.png" loading="lazy"></figure>
+<blockquote><em>전체 작업 50분 35초 중, 테스트 실행에만 23분 11초를 소모했습니다.</em></blockquote>
+<p>AI의 답변은 충격적이었습니다.<br>저는 <strong>작업 속도가 느린 원인이 AI의 성능이 아니라 코드 구조에 있다고</strong> 판단했고, 즉시 테스트 코드를 살펴봤습니다.</p>
+<h2 id="의도는-좋으나-성능은-나쁜-코드">의도는 좋으나 성능은 나쁜 코드</h2>
+<pre><code>@<span class="code-keyword">DataJpaTest</span>
+@<span class="code-keyword">Import</span>(<span class="code-constant">BookService</span><span class="code-punctuation">.</span><span class="code-constant">class</span>)
+<span class="code-keyword">class</span><span class="code-function"> BookServiceTest</span> {
+<span class="code-comment">    // ...</span>
+}
+
+@<span class="code-keyword">DataJpaTest</span>
+@<span class="code-keyword">Import</span>(<span class="code-constant">CommentService</span><span class="code-punctuation">.</span><span class="code-constant">class</span>)
+<span class="code-keyword">class</span><span class="code-function"> CommentServiceTest</span> {
+<span class="code-comment">    // ...</span>
+}
+
+@<span class="code-keyword">DataJpaTest</span>
+@<span class="code-keyword">Import</span>(<span class="code-constant">ClubService</span><span class="code-punctuation">.</span><span class="code-constant">class</span>)
+<span class="code-keyword">class</span><span class="code-function"> ClubServiceTest</span> {
+<span class="code-comment">    // ...</span>
+}</code></pre>
+<p>저희의 서비스 테스트는 위처럼 <code>@DataJpaTest</code>와 <code>@Import</code>를 사용하고 있었습니다.<br>테스트에 필요한 빈만 최소한으로 등록해, <strong>테스트가 무관한 빈에 의존하지 않게 만들겠다</strong>는 의도였죠.</p>
+<p>이때, <code>@Import</code><strong>로 서로 다른 빈을 추가</strong>하는 게 문제였습니다.</p>
+<h2 id="왜-느렸죠?">왜 느렸죠?</h2>
+<figure class="rilog-figure"><img src="/assets/rilog/363-image-2.png" alt="image.png" loading="lazy"></figure>
+<p>이 도식은 OpenAI 이미지 생성 도구로 만들었습니다.</p>
+<p>결론부터 말하자면, 테스트끼리 <code>ApplicationContext</code>를 공유하지 못해서 <strong>여러 개의 </strong><code>ApplicationContext</code><strong>를 생성</strong>해야 했기 때문이었습니다.</p>
+<p>아래에서 자세히 알아보겠습니다.</p>
+<h3 id="Context-Cache-Key">Context Cache Key</h3>
+<blockquote>Once the TestContext framework loads an <code>ApplicationContext</code> (or <code>WebApplicationContext</code>) for a test, <strong>that context is cached and reused for all subsequent tests that declare the same unique context configuration within the same test suite.</strong><br>테스트에서 TestContext 프레임워크가 <code>ApplicationContext</code>(또는 <code>WebApplicationContext</code>)를 한 번 로드하면, 해당 컨텍스트는 캐시에 저장되며 <strong>동일한 고유 컨텍스트 설정을 사용하는 이후의 모든 테스트에서 캐시된 컨텍스트를 재사용합니다.</strong><br>- <a href="https://docs.spring.io/spring-framework/reference/testing/testcontext-framework/ctx-management/caching.html">Spring 공식 문서 - 컨텍스트 캐싱</a></blockquote>
+<p>Spring이 애플리케이션을 실행하려면 애플리케이션에 필요한 객체를 만들고 관리하는 공간이 필요합니다.<br>이 공간을 <code>ApplicationContext</code>라고 부릅니다.<br>Spring은 <code>ApplicationContext</code>를 생성할 때 설정을 읽고 필요한 객체를 모두 생성해 의존 관계를 연결하는 초기화 작업을 수행하므로, <code>ApplicationContext</code>를 생성하는 작업은 다른 작업에 비해 무겁습니다.</p>
+<p>Spring의 TestContext 프레임워크는 <strong>같은 구성을 사용하는 테스트마다 </strong><code>ApplicationContext</code><strong>를 한 번만 만들고 재사용</strong>합니다.<br>덕분에, <code>ApplicationContext</code>를 띄우는 무거운 작업은 한 번만 수행하면서 여러 테스트를 실행할 수 있죠.</p>
+<p>여기서 &quot;같은 구성을 사용하는가?&quot;를 결정하는 기준을 <strong>Context Cache Key</strong>라고 부르고, Context Cache Key는 다음과 같은 설정들로 구성됩니다.</p>
+<p></p>
+<figure class="rilog-figure"><img src="/assets/rilog/363-image-3.png" alt="image.png" loading="lazy"></figure>
+<p>이 Context Cache Key는 다양한 설정들로 구성되고, <strong>모든 값이 같아야만 같은 구성</strong>이라고 판단합니다.</p>
+<p>문제는, <code>@Import</code><strong>로 어떤 빈을 추가했는지까지 Context Cache Key에 반영</strong>된다는 거였습니다.</p>
+<pre><code>@<span class="code-keyword">DataJpaTest</span>
+<span class="code-comment">// BookService 빈만 Import한 ApplicationContext 필요</span>
+@<span class="code-keyword">Import</span>(<span class="code-constant">BookService</span><span class="code-punctuation">.</span><span class="code-constant">class</span>)
+<span class="code-keyword">class</span><span class="code-function"> BookServiceTest</span> {
+<span class="code-comment">    // ...</span>
+}
+
+@<span class="code-keyword">DataJpaTest</span>
+<span class="code-comment">// CommentService 빈만 Import한 ApplicationContext 필요</span>
+@<span class="code-keyword">Import</span>(<span class="code-constant">CommentService</span><span class="code-punctuation">.</span><span class="code-constant">class</span>)
+<span class="code-keyword">class</span><span class="code-function"> CommentServiceTest</span> {
+<span class="code-comment">    // ...</span>
+}
+
+@<span class="code-keyword">DataJpaTest</span>
+<span class="code-comment">// ClubService 빈만 Import한 ApplicationContext 필요</span>
+@<span class="code-keyword">Import</span>(<span class="code-constant">ClubService</span><span class="code-punctuation">.</span><span class="code-constant">class</span>)
+<span class="code-keyword">class</span><span class="code-function"> ClubServiceTest</span> {
+<span class="code-comment">    // ...</span>
+}</code></pre>
+<p>저희는 서비스 테스트 클래스마다 서로 다른 빈을 <code>Import</code>하고 있었으니, 전체 테스트를 돌릴 때마다 <strong>서비스 테스트 클래스 개수만큼의 </strong><code>ApplicationContext</code><strong>가 추가로 생성</strong>되고 있었습니다.</p>
+<p>저희의 경우, 서비스 테스트를 위해 8개의 <code>ApplicationContext</code>를 추가로 생성하고 있었습니다.</p>
+<h2 id="ApplicationContext-생성이-이렇게-느린가?">ApplicationContext 생성이 이렇게 느린가?</h2>
+<p>여기까지만 보면 이런 의문이 생길 수 있습니다.</p>
+<blockquote><code>ApplicationContext</code>를 몇 번 더 만드는 것만으로 테스트가 이렇게까지 느려질까?</blockquote>
+<p>저희의 통합 테스트는 Docker의 MySQL 컨테이너를 사용하고 있었습니다.<br>이 때문에, <code>ApplicationContext</code>에 실제 MySQL을 실행하는 Testcontainers 설정이 포함되어 있어 <code>ApplicationContext</code> 생성이 더 오래 걸렸습니다.</p>
+<pre><code>@<span class="code-keyword">TestConfiguration</span>
+<span class="code-keyword">class</span><span class="code-function"> TestcontainersConfiguration</span> {
+
+    @<span class="code-keyword">Bean</span>
+    @<span class="code-keyword">ServiceConnection</span>
+<span class="code-keyword">    MySQLContainer</span>&lt;<span class="code-keyword">?</span>&gt; <span class="code-function">mysqlContainer</span>() {
+<span class="code-keyword">        return</span><span class="code-keyword"> new</span><span class="code-keyword"> MySQLContainer</span>&lt;&gt;(<span class="code-string-expression">&quot;mysql:8.4&quot;</span>);
+    }
+}</code></pre>
+<p>실제 테스트 구성을 단순화하면 다음과 같습니다.</p>
+<pre><code>@<span class="code-keyword">DataJpaTest</span>
+@<span class="code-keyword">Import</span>({
+<span class="code-constant">    TestcontainersConfiguration</span><span class="code-punctuation">.</span><span class="code-constant">class</span><span class="code-punctuation">,</span>
+<span class="code-constant">    BookService</span><span class="code-punctuation">.</span><span class="code-constant">class</span>
+})
+<span class="code-keyword">class</span><span class="code-function"> BookServiceTest</span> {
+<span class="code-comment">    // ...</span>
+}</code></pre>
+<p>새로운 <code>ApplicationContext</code>가 만들어질 때마다 <code>MySQLContainer</code> 빈도 새로 만들어졌습니다.<br>그 결과 Spring Bean만 다시 등록한 것이 아니라, MySQL 컨테이너를 생성하는 작업까지 수행됐습니다.</p>
+<p>즉, 서비스마다 다른 <code>@Import</code> 설정 때문에 <strong>매번 MySQL 테스트 환경 전체를 다시 준비</strong>하고 있었습니다.</p>
+<p></p>
+<h2 id="어떻게-해결할-수-있을까?">어떻게 해결할 수 있을까?</h2>
+<h3 id="1.-MySQL-컨테이너를-재사용하면-되지-않을까?">1. MySQL 컨테이너를 재사용하면 되지 않을까?</h3>
+<pre><code>@<span class="code-keyword">DataJpaTest</span>
+@<span class="code-keyword">AutoConfigureTestDatabase</span>(replace <span class="code-keyword">=</span><span class="code-constant"> AutoConfigureTestDatabase</span><span class="code-punctuation">.</span><span class="code-constant">Replace</span><span class="code-punctuation">.</span><span class="code-constant">NONE</span>)
+<span class="code-keyword">abstract</span><span class="code-keyword"> class</span><span class="code-function"> MySqlJpaTest</span> {
+
+<span class="code-keyword">    private</span><span class="code-keyword"> static</span><span class="code-keyword"> final</span><span class="code-keyword"> MySQLContainer</span>&lt;<span class="code-keyword">?</span>&gt; MYSQL <span class="code-keyword">=</span><span class="code-keyword"> new</span><span class="code-keyword"> MySQLContainer</span>&lt;&gt;(<span class="code-string-expression">&quot;mysql:8.4&quot;</span>);
+
+<span class="code-keyword">    static</span> {
+<span class="code-constant">        MYSQL</span><span class="code-punctuation">.</span><span class="code-function">start</span>();
+    }
+
+    @<span class="code-keyword">DynamicPropertySource</span>
+<span class="code-keyword">    static</span><span class="code-keyword"> void</span><span class="code-function"> configureDataSource</span>(<span class="code-keyword">DynamicPropertyRegistry</span> registry) {
+<span class="code-constant">        registry</span><span class="code-punctuation">.</span><span class="code-function">add</span>(<span class="code-string-expression">&quot;spring.datasource.url&quot;</span><span class="code-punctuation">,</span> MYSQL<span class="code-keyword">::</span>getJdbcUrl);
+<span class="code-constant">        registry</span><span class="code-punctuation">.</span><span class="code-function">add</span>(<span class="code-string-expression">&quot;spring.datasource.username&quot;</span><span class="code-punctuation">,</span> MYSQL<span class="code-keyword">::</span>getUsername);
+<span class="code-constant">        registry</span><span class="code-punctuation">.</span><span class="code-function">add</span>(<span class="code-string-expression">&quot;spring.datasource.password&quot;</span><span class="code-punctuation">,</span> MYSQL<span class="code-keyword">::</span>getPassword);
+    }
+}</code></pre>
+<p><code>ApplicationContext</code>와 별개로, MySQL 컨테이너는 한 번만 생성해 재사용할 수 있습니다.<br>이를 Singleton Container Pattern이라고 합니다.</p>
+<p>이러면 <code>ApplicationContext</code>를 새로 생성해도 MySQL 컨테이너는 재사용하니, 지금 <code>ApplicationContext</code> 생성이 오래 걸리는 원인 중 하나는 제거할 수 있습니다.<br>하지만, 저희는 애당초 <code>ApplicationContext</code>를 불필요하게 여러 번 생성하는 게 근본적인 문제라고 판단했기에 Singleton Container Pattern을 고려하지 않았습니다.</p>
+<h3 id="2.-DB를-바꾸면-해결되지-않을까?">2. DB를 바꾸면 해결되지 않을까?</h3>
+<p>저희는 우선 &quot;반드시 MySQL로 테스트해야 할까?&quot;를 고민했습니다.<br>H2를 통해 인메모리 DB로 테스트하면, MySQL 테스트 환경을 준비하느라 드는 시간을 없앨 수 있기 때문이죠.</p>
+<p>이점과 한계를 비교해보면 다음과 같습니다.</p>
+<ul>
+<li>이점
+<ul>
+<li>테스트의 Docker 의존성이 감소한다.</li>
+<li>테스트 속도가 MySQL보다 빠르다.</li>
+</ul></li>
+<li>한계
+<ul>
+<li>MySQL에서의 동작을 검증할 수 없다.</li>
+</ul></li>
+</ul>
+<p>H2도 매력적이었지만, 저희는 계속 MySQL로 테스트하기로 결정했습니다.<br>테스트 환경과 운영 환경의 데이터베이스 관리 시스템(DBMS)이 달라지면 테스트로 운영 안정성을 보장할 수 없다고 판단했기 때문입니다.</p>
+<h3 id="3.-@Import를-통일하자">3. <code>@Import</code>를 통일하자</h3>
+<p>테스트마다 <code>@Import</code> 설정이 달라 <code>ApplicationContext</code>를 재사용하지 못하는 게 근본적인 문제니, <code>@Import</code><strong> 설정을 통일</strong>해야 했습니다.</p>
+<p>저희는 다음 2가지 방법 중 어떤 방법을 선택할지 고민했습니다.</p>
+<h4 id="3-1.-@SpringBootTest로-통일하기">3-1. <code>@SpringBootTest</code>로 통일하기</h4>
+<pre><code>@<span class="code-keyword">SpringBootTest</span>
+<span class="code-keyword">class</span><span class="code-function"> BookServiceTest</span> {
+<span class="code-comment">    // ...</span>
+}
+
+@<span class="code-keyword">SpringBootTest</span>
+<span class="code-keyword">class</span><span class="code-function"> CommentServiceTest</span> {
+<span class="code-comment">    // ...</span>
+}</code></pre>
+<p>서비스 테스트가 <code>@DataJpaTest</code> 대신 <code>@SpringBootTest</code>를 사용하도록 통일하는 방법입니다.</p>
+<p>가장 <strong>구성이 단순</strong>하지만, <strong>테스트와 무관한 빈까지 항상 로드</strong>한다는 단점이 있습니다.</p>
+<h4 id="3-2.-필요한-@Import를-공통-애노테이션으로-묶기">3-2. 필요한 <code>@Import</code>를 공통 애노테이션으로 묶기</h4>
+<pre><code>@<span class="code-keyword">Target</span>(<span class="code-constant">ElementType</span><span class="code-punctuation">.</span><span class="code-constant">TYPE</span>)
+@<span class="code-keyword">Retention</span>(<span class="code-constant">RetentionPolicy</span><span class="code-punctuation">.</span><span class="code-constant">RUNTIME</span>)
+@<span class="code-keyword">DataJpaTest</span>
+@<span class="code-keyword">Import</span>({
+<span class="code-constant">    BookService</span><span class="code-punctuation">.</span><span class="code-constant">class</span><span class="code-punctuation">,</span>
+<span class="code-constant">    CommentService</span><span class="code-punctuation">.</span><span class="code-constant">class</span><span class="code-punctuation">,</span>
+<span class="code-constant">    ClubService</span><span class="code-punctuation">.</span><span class="code-constant">class</span>
+})
+<span class="code-keyword">public</span> @<span class="code-keyword">interface</span><span class="code-keyword"> ServiceJpaTest</span> {
+}</code></pre>
+<p><code>@DataJpaTest</code>는 유지하면서, 서비스 테스트들이 <strong>사용할 빈들을 모두 공통 애노테이션에 등록</strong>합니다.</p>
+<pre><code>@<span class="code-keyword">ServiceJpaTest</span>
+<span class="code-keyword">class</span><span class="code-function"> BookServiceTest</span> {
+<span class="code-comment">    // ...</span>
+}
+
+@<span class="code-keyword">ServiceJpaTest</span>
+<span class="code-keyword">class</span><span class="code-function"> CommentServiceTest</span> {
+<span class="code-comment">    // ...</span>
+}</code></pre>
+<p>각 서비스 테스트에서는 공통 애노테이션만 사용합니다.</p>
+<p>서비스 테스트에 <strong>필요한 빈들만 로드</strong>하면서도, 서비스 테스트끼리는 하나의 <code>ApplicationContext</code>를 재사용할 수 있습니다.</p>
+<h4 id="3-3.-비교하기">3-3. 비교하기</h4>
+<div class="article-table"><table><tbody><tr><td colspan="1" rowspan="1"><p>비교 항목</p></td><td colspan="1" rowspan="1"><p><code>@SpringBootTest</code></p></td><td colspan="1" rowspan="1"><p>공통 애노테이션</p></td></tr><tr><td colspan="1" rowspan="1"><p>유지보수<br>(새로운 서비스 테스트가 추가된다면?)</p></td><td colspan="1" rowspan="1"><p><span style="background-color: rgb(221, 237, 234);">기존 테스트를 수정할 필요 없음</span></p></td><td colspan="1" rowspan="1"><p>공통 애노테이션을 수정해야 함</p></td></tr><tr><td colspan="1" rowspan="1"><p>복잡도<br>(개발자의 인지부하)</p></td><td colspan="1" rowspan="1"><p><span style="background-color: rgb(221, 237, 234);">단순히 </span><code>@SpringBootTest</code><span style="background-color: rgb(221, 237, 234);"> 사용</span></p></td><td colspan="1" rowspan="1"><p>서비스 테스트에만 사용하는 공통 애노테이션을 인지해야 함</p></td></tr><tr><td colspan="1" rowspan="1"><p>테스트 초기화 비용</p></td><td colspan="1" rowspan="1"><p>빈 로딩 범위가 넓어, 상대적으로 큼</p></td><td colspan="1" rowspan="1"><p><span style="background-color: rgb(221, 237, 234);">로드하는 빈의 범위가 좁아 초기화 비용이 상대적으로 작음</span></p></td></tr><tr><td colspan="1" rowspan="1"><p>무관한 빈의 영향</p></td><td colspan="1" rowspan="1"><p>무관한 빈의 초기화가 실패하면 서비스 테스트도 실패함</p></td><td colspan="1" rowspan="1"><p><span style="background-color: rgb(221, 237, 234);">무관한 빈에 영향받지 않음</span></p></td></tr></tbody></table></div>
+<p>저희는 애플리케이션을 이제 막 개발하기 시작한 상태였습니다.<br>따라서, &quot;<strong>앞으로의 유지보수에 어떤 방식이 유리한가?</strong>&quot;를 가장 중요한 가치로 설정했습니다.</p>
+<p>이에 따라, <strong>구조가 가장 간단하고 유지보수가 간편한 </strong><code>@SpringBootTest</code><strong> 방식을 선택</strong>했습니다.<br>이때, 무관한 빈에 의해 문제가 발생할 가능성은 낮다고 판단했기에, 단점이 크지 않다고 판단했습니다.</p>
+<p></p>
+<h2 id="개선-전후-비교">개선 전후 비교</h2>
+<div class="article-table"><table><tbody><tr><th colspan="1" rowspan="1"><p>비교 항목</p></th><th colspan="1" rowspan="1"><p>개선 전</p></th><th colspan="1" rowspan="1"><p>개선 후</p></th></tr><tr><td colspan="1" rowspan="1"><p>ApplicationContext 생성 횟수</p></td><td colspan="1" rowspan="1"><p>9번</p></td><td colspan="1" rowspan="1"><p>2번</p></td></tr><tr><td colspan="1" rowspan="1"><p>실행 시간 중앙값</p></td><td colspan="1" rowspan="1"><p><strong>144.3초</strong></p></td><td colspan="1" rowspan="1"><p><strong>50.9초</strong><br><strong>약 64.7% 감소</strong></p></td></tr></tbody></table></div>
+<p><code>@SpringBootTest</code>로 구성을 통일하면 실제로 얼마나 빨라질까요?<br>같은 13개 클래스의 64개 테스트를 변경 전후 각각 10번씩 실행해 비교해봤습니다.</p>
+<p>단순히 <code>ApplicationContext</code>를 재사용할 수 있게 만들었을 뿐인데, 테스트 시간이 144초에서 50초로 <strong>약 64% 감소</strong>했습니다.</p>
+<h2 id="마치며">마치며</h2>
+<p>저희의 사고 흐름을 요약하면 다음과 같습니다.</p>
+<ol>
+<li>테스트 속도가 느리다</li>
+<li><code>ApplicationContext</code>를 재사용하지 못하고 매번 생성하는 게 문제다</li>
+<li><code>ApplicationContext</code>가 생성될 때 MySQL 컨테이너까지 생성하니 더 오래 걸린다</li>
+<li>인메모리 DB를 사용해볼까? → 운영 환경과 테스트 환경을 최대한 일치시켜야 하니 사용하지 않는다</li>
+<li><code>@Import</code>를 통일하자 → 구조가 간단하고 유지보수하기 쉬운 <code>@SpringBootTest</code>로 통일하자</li>
+</ol>
+<p>다음 내용은 의도적으로 다루지 않았습니다.<br>흥미가 있다면 따로 조사해 보세요.</p>
+<ol>
+<li><code>@SpringBootTest</code>는 테스트 간 DB 격리까지 담당하지 않습니다. 테스트 간 DB를 어떻게 격리할지는 별도로 고민해야 합니다.</li>
+<li><code>@SpringBootTest</code>로 통일하더라도, 모든 테스트가 같은 <code>ApplicationContext</code>를 사용하진 않습니다. <code>@Import</code> 외에도 다양한 요인에 의해 Context Cache Key가 달라질 수 있습니다.</li>
+</ol>
+<p></p>
+<p></p>
+<p></p>
+<p></p>
+<p></p>
+<p></p>
+<p></p>
+<p></p>
+<p></p>
+<p></p>
+<p></p>
+<p></p>
+<p></p>

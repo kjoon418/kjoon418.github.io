@@ -1,0 +1,59 @@
+<!--
+{
+  "title": "[시스템 디자인] 모니터링 시스템 설계",
+  "summary": "새벽에 서버에 이상이 발생했다면, 그 사실을 어떻게 알 수 있을까? 이런 지표를 관찰하다가 알려 주는 장치가 없다면, 개발자가 새벽 내내 대시보드를 지켜봐야 한다. 이 문제를 해결하는 블록이 서비스 모니터링이다. 이 블록으로 문제를 어떻게 해결하는지 알아보자. 무엇을 알아야 하는가?…",
+  "date": "2026-11-11T13:07:07.929Z",
+  "category": "tech",
+  "cover": "/assets/rilog/550-cover.png",
+  "coverAlt": "[시스템 디자인] 모니터링 시스템 설계"
+}
+-->
+<blockquote>새벽에 서버에 이상이 발생했다면, 그 사실을 어떻게 알 수 있을까?<br>이런 <strong>지표를 관찰하다가 알려 주는 장치</strong>가 없다면, 개발자가 새벽 내내 대시보드를 지켜봐야 한다.<br>이 문제를 해결하는 블록이 <strong>서비스 모니터링</strong>이다.<br>이 블록으로 문제를 어떻게 해결하는지 알아보자.</blockquote>
+<h3 id="무엇을-알아야-하는가?">무엇을 알아야 하는가?</h3>
+<p>문제를 해결하기 위해 우리가 알고 싶은건 다음과 같다.</p>
+<ol>
+<li><strong>언제</strong>부터 문제가 발생했고, <strong>얼마나</strong> 심각한가?</li>
+<li><strong>어느 구간</strong>에서 문제가 발생했나?</li>
+<li>구체적으로 <strong>어떤 일</strong>이 있었나?</li>
+</ol>
+<p>어떤 요소를 통해 알아낼 수 있는지 알아보자.</p>
+<h4 id="1.-언제부터-문제가-발생했고,-얼마나-심각한가?-→-메트릭">1. 언제부터 문제가 발생했고, 얼마나 심각한가? → 메트릭</h4>
+<figure class="rilog-figure"><img src="/assets/rilog/550-image-1.webp#1616x823" alt="" loading="lazy"><figcaption>03:02부터 오류율이 증가한걸 파악할 수 있다</figcaption></figure>
+<p><strong>지표</strong>를 확인하고 싶다면 메트릭을 보면 된다.<br>시스템의 상태나 동작을 <strong>숫자로 나타낸 수치</strong>를 메트릭이라고 한다.</p>
+<p>메트릭을 통해, 시스템의 성능이나 상태가 <strong>시간에 따라 어떻게 변화</strong>했는지 파악할 수 있다.</p>
+<h4 id="2.-어느-구간에서-문제가-발생했나?-→-트레이스">2. 어느 구간에서 문제가 발생했나? → 트레이스</h4>
+<figure class="rilog-figure"><img src="/assets/rilog/550-image-2.webp#2048x719" alt="" loading="lazy"><figcaption>결제 서비스 구간에서 실패했단걸 파악할 수 있다</figcaption></figure>
+<p><strong>문제가 생긴 구간</strong>을 확인하고 싶다면 트레이스를 보면 된다.<br>하나의 요청이 거쳐간 <strong>작업들의 관계와 시간을 연결한 기록</strong>을 트레이스라고 한다.</p>
+<p>트레이스를 통해, <strong>지연이나 실패가 어디에서 발생</strong>했는지 파악할 수 있다.</p>
+<h4 id="3.-구체적으로-어떤-일이-있었나?-→-로그">3. 구체적으로 어떤 일이 있었나? → 로그</h4>
+<figure class="rilog-figure"><img src="/assets/rilog/550-image-3.webp#1774x611" alt="" loading="lazy"><figcaption>결제 대행사 연결에 타임아웃이 발생해 실패했단걸 파악할 수 있다</figcaption></figure>
+<p><strong>무슨 일이 있었는지</strong> 확인하고 싶다면 로그를 보면 된다.<br>프로그램에서 일어난 <strong>사건을 기록</strong>한 내용을 로그라고 한다.</p>
+<p>로그를 통해, <strong>문제의 원인을 구체적으로 파악</strong>할 수 있다.</p>
+<h3 id="무엇을-관측할-것인가?">무엇을 관측할 것인가?</h3>
+<p>Google의 <a href="https://sre.google/sre-book/monitoring-distributed-systems/#the-four-golden-signals">The Four Golden Signals</a>에서 시작하자</p>
+<ol>
+<li>트래픽: 얼마나 많은 요청이 들어오는가?</li>
+<li>응답 시간: 요청을 처리하는데 시간이 얼마나 걸리는가?</li>
+<li>오류: 요청이 올바르게 처리되지 않은 비율이 얼마나 되는가?</li>
+<li>포화도: 자원 사용량이 한도에 얼마나 가까운가?</li>
+</ol>
+<p>이 지표를 모두 수집한다면, 문제 상황에 대부분에 대응할 수 있다.</p>
+<h3 id="알림을-언제-보낼-것인가?">알림을 언제 보낼 것인가?</h3>
+<figure class="rilog-figure"><img src="/assets/rilog/550-image-4.webp#1774x887" alt="" loading="lazy"><figcaption>오류율이 3분 이상 5%를 초과할 때 알림을 보낸다</figcaption></figure>
+<p>만약 “오류율이 5%를 넘으면 알림을 보낸다”라고 설정하면 어떻게 될까?<br>오류율이 잠깐 5%를 넘겼다가 바로 내려가는 상황에도 알림을 보낸다.</p>
+<p>그러면,<strong> </strong>알아서 해결될 문제에도 개발자를 깨우게 된다.<br>문제가 <strong>일정 시간 이상 지속</strong>될 때 알림을 보내도록 만들자.<br>얼마나 오래 지속되면 알림을 보낼 건지는, 가용성 SLO를 기준으로 결정하면 된다.</p>
+<p>알림의 상태는 다음처럼 표현할 수 있다.</p>
+<ol>
+<li><strong>정상</strong>(inactive): 조건이 거짓인 상태</li>
+<li><strong>대기</strong>(pending): 조건이 참이 되어서 지켜보는 상태</li>
+<li><strong>발생</strong>(firing): 조건이 일정 시간 이상 참이어서 알림을 보낸 상태</li>
+<li><strong>해소</strong>(resolved): 발생 이후 조건이 다시 거짓이 된 상태</li>
+</ol>
+<h3 id="데이터가-수집되지-않는-상황도-고려하자">데이터가 수집되지 않는 상황도 고려하자</h3>
+<figure class="rilog-figure"><img src="/assets/rilog/550-image-5.webp#2000x364" alt="" loading="lazy"></figure>
+<p>“오류율이 5%를 넘으면 알림을 보낸다”라는 규칙만 정했다고 하자.<br><strong>서버가 죽어서 아무 데이터도 보내지 않을 때</strong> 알아챌 수 있을까?</p>
+<p>알림 규칙을 정할 때, 데이터가 수집되지 않는 상황에 대한 규칙도 따로 설정하자.</p>
+<h3 id="모니터링도-멈출-수-있다">모니터링도 멈출 수 있다</h3>
+<figure class="rilog-figure"><img src="/assets/rilog/550-image-6.webp#2048x683" alt="" loading="lazy"><figcaption>모니터링 시스템이 멈추면 데드맨 스위치가 알림을 보낸다</figcaption></figure>
+<p>모니터링 시스템 자체가 멈추면 알림을 받을 수 없다.<br>그래서, <strong>모니터링 시스템이 멈춘걸 알려주는 별도의 알림</strong>이 필요하다.</p>
+<p>이런 알림 서비스를 <strong>데드맨 스위치</strong>라고 부른다.<br>모니터링 서비스가 데드맨 스위치에 주기적으로 하트비트를 보내서,<strong> 하트비트가 끊기면 모니터링 시스템이 죽었다 판단</strong>해 알림을 보낸다.</p>
