@@ -1,7 +1,7 @@
 export const site = {
   name: "Watson's Blog",
   author: 'Dr. John H. Watson',
-  description: '기술, 일상, 그리고 지나온 일들을 기록합니다.',
+  description: '주인장이 직접 말아주는 개발 이야기',
   url: 'https://kjoon418.github.io',
   github: 'https://github.com/kjoon418',
 };
