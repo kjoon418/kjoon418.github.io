@@ -26,7 +26,6 @@ img { display: block; max-width: 100%; }
   padding: 16px 0; background: #fafbfc; border-right: 1px solid var(--line);
 }
 .sidebar-brand { display: block; text-decoration: none; font: 950 31px/.95 system-ui, sans-serif; letter-spacing: -.095em; }
-.sidebar-brand span { color: var(--accent); }
 .sidebar-nav, .sidebar-bottom { display: flex; align-items: center; }
 .sidebar-bottom { margin-top: auto; }
 .sidebar-link { display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid transparent; border-radius: 10px; color: var(--body); }
