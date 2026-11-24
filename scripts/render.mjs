@@ -7,7 +7,6 @@ const author = escape(site.author);
 const github = escape(site.github);
 const initial = escape(Array.from(site.name)[0]);
 const icons = {
-  feed: '<path d="M4 6h16M4 12h12M4 18h8"/>',
   github: '<path d="M9 19c-4.3 1.3-4.3-2.2-6-2.7M15 22v-3.3a2.9 2.9 0 0 0-.8-2.2c2.7-.3 5.5-1.3 5.5-6A4.7 4.7 0 0 0 18.4 7a4.4 4.4 0 0 0-.1-3.3s-1-.3-3.5 1.3a13.2 13.2 0 0 0-6 0C6.3 3.4 5.3 3.7 5.3 3.7A4.4 4.4 0 0 0 5.2 7a4.7 4.7 0 0 0-1.3 3.5c0 4.7 2.8 5.7 5.5 6a2.9 2.9 0 0 0-.8 2.2V22"/>',
   left: '<path d="M19 12H5m7-7-7 7 7 7"/>',
   right: '<path d="M5 12h14m-7-7 7 7-7 7"/>',
@@ -53,9 +52,6 @@ function layout({ page, title, description, path, preview, image, content }) {
   <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
   <aside class="sidebar">
     <a class="sidebar-brand" href="/" aria-label="${brand} 홈">${initial}</a>
-    <nav class="sidebar-nav" aria-label="주 메뉴">
-      <a class="sidebar-link" href="/" ${path === '/' ? 'aria-current="page"' : page !== 'error' ? 'aria-current="location"' : ''} aria-label="피드" title="피드">${icon('feed')}</a>
-    </nav>
     <div class="sidebar-bottom">
       <a class="sidebar-link" href="${github}" aria-label="GitHub 프로필" title="GitHub">${icon('github')}</a>
     </div>
@@ -111,7 +107,7 @@ export function feed(current, posts, preview, path = current.path) {
     </header>
     <section class="feed" aria-labelledby="feed-title">
       <header class="feed-toolbar">
-        <div class="feed-heading"><h2 id="feed-title">${current.title}</h2><span class="sort-label">최신순</span>${visible.some((post) => post.preview) ? '<span class="preview-note">예시 글</span>' : ''}</div>
+        <div class="feed-heading"><h2 id="feed-title">${current.title}</h2><span class="post-count">${visible.length}개</span><span class="sort-label">최신순</span>${visible.some((post) => post.preview) ? '<span class="preview-note">예시 글</span>' : ''}</div>
         <nav class="category-nav" aria-label="글 카테고리">${tabs}</nav>
       </header>
       ${listing}
