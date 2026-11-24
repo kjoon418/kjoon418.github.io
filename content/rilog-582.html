@@ -1,0 +1,34 @@
+<!--
+{
+  "title": "[시스템 디자인] Core Entities 정의",
+  "summary": "Core Entities를 이름과 한 줄 설명으로 가볍게 정의하기",
+  "date": "2026-11-17T08:32:00.327Z",
+  "category": "tech",
+  "cover": "/assets/rilog/582-cover.png",
+  "coverAlt": "[시스템 디자인] Core Entities 정의"
+}
+-->
+<blockquote>실무에서 받는 요청은 항상 모호하다. <br>문제를 제대로 이해하기도 전에 해결하려 하면, 바람직한 방법보다 익숙한 방법을 사용하게 된다. <br><strong>요구사항을 단계별로 구체화하며 설계</strong>하자.</blockquote>
+<p>이번 시간엔, 다음 순서 중 <strong>Core Entities 정의</strong> 단계를 살펴보자.</p>
+<ol>
+<li><strong>기능/비기능 요구사항 정의</strong>: 무엇을 만들어야 하는지 구체화한다.</li>
+<li><strong>Core Entities</strong> 정의: 시스템이 사용할 <strong>핵심 객체</strong>를 정의한다.</li>
+<li><strong>API 설계</strong>: 요구사항마다 ‘<strong>무엇을 어떻게 호출하면 어떻게 처리하고 응답할지</strong>’ 정한다</li>
+<li><strong>HLD</strong>: <strong>동작하는 시스템</strong>을 설계한다.</li>
+<li><strong>Deep Dive</strong>: 시스템이 <strong>비기능 요구사항</strong>까지 충족하도록 개선한다.</li>
+</ol>
+<h2 id="무엇을-하는가">무엇을 하는가</h2>
+<p>앞에서 요구사항을 정의했으니, 이제 요구사항을 위해 <strong>시스템이 주고받거나 저장할 핵심 객체</strong>를 정의하자.</p>
+<h2 id="왜-정의해야-할까?">왜 정의해야 할까?</h2>
+<figure class="rilog-figure"><img src="/assets/rilog/582-image-1.png#2172x724" alt="image.png" width="584" loading="lazy"><figcaption>구성요소를 표현할 순 있어도, 그 사이에 어떤 데이터가 오가는지는 설명하기 어렵다</figcaption></figure>
+<p>Core Entities를 정의하지 않으면 어떻게 될까?<br>사용자-서버-저장소의 흐름은 표현할 수 있어도, <strong>무엇을 저장하고 무엇을 조회하는지</strong>를 설명하긴 어려워진다.</p>
+<h2 id="세부-스키마는-고민하지-말자">세부 스키마는 고민하지 말자</h2>
+<figure class="rilog-figure"><img src="/assets/rilog/582-image-2.png#1752x897" alt="image.png" width="491" loading="lazy"><figcaption>세부적인 스키마는 나중에 정한다</figcaption></figure>
+<p>Core Entities의 모든걸 정의할 필요는 없다. <br>이름과 한 줄 설명 정도만 정의하자.</p>
+<p>지금 모든 스키마를 정의하려 하면, 시스템이 어떻게 동작할지 설계하기도 전에 시간을 다 쓰게 된다.</p>
+<h2 id="당장-필요한-객체만-정의하자">당장 필요한 객체만 정의하자</h2>
+<figure class="rilog-figure"><img src="/assets/rilog/582-image-3.png#1753x897" alt="image.png" width="439" loading="lazy"><figcaption>범위 밖 기능을 위한 객체는 지금 정의하지 않는다</figcaption></figure>
+<p>기능 요구사항을 정의할 때, 당장 설계하지 않을 <strong>범위 밖 기능</strong>도 정했을 것이다. <br>이런 범위 밖 기능을 위한 객체는 지금 고민하지 말자.</p>
+<h2 id="요약">요약</h2>
+<div class="article-table"><table><tbody><tr><th colspan="1" rowspan="1"><p>요소</p></th><th colspan="1" rowspan="1"><p>언제 정해야 하는가</p></th></tr><tr><td colspan="1" rowspan="1"><p>이름</p></td><td colspan="1" rowspan="1"><p>지금 정한다</p></td></tr><tr><td colspan="1" rowspan="1"><p>한 줄 설명(역할)</p></td><td colspan="1" rowspan="1"><p>지금 정한다</p></td></tr><tr><td colspan="1" rowspan="1"><p>세부 스키마</p></td><td colspan="1" rowspan="1"><p>API나 HLD를 설계할 때 정한다.</p></td></tr><tr><td colspan="1" rowspan="1"><p>핵심 기능에 대한 객체</p></td><td colspan="1" rowspan="1"><p>지금 정한다</p></td></tr><tr><td colspan="1" rowspan="1"><p>범위 밖 기능에 대한 객체</p></td><td colspan="1" rowspan="1"><p>범위 밖 기능을 설계할 때 정한다</p></td></tr></tbody></table></div>
+<p>요약하면 위와 같다. <br>Core Entities 설계가 모두 끝났다면, <strong>API 설계</strong> 단계로 넘어가보자.</p>

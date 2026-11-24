@@ -1,0 +1,120 @@
+<!--
+{
+  "title": "[시스템 디자인] 기능/비기능 요구사항 정의",
+  "summary": "가용성·확장성·성능·신뢰성과 PACELC로 요구사항 정의하기",
+  "date": "2026-11-16T11:48:21.702Z",
+  "category": "tech",
+  "cover": "/assets/rilog/579-cover.png",
+  "coverAlt": "[시스템 디자인] 기능/비기능 요구사항 정의"
+}
+-->
+<blockquote>실무에서 받는 요청은 항상 모호하다. <br>문제를 제대로 이해하기도 전에 해결하려 하면, 바람직한 방법보다 익숙한 방법을 사용하게 된다. <br><strong>요구사항을 단계별로 구체화하며 설계</strong>하자.</blockquote>
+<p>지금부터 시스템 디자인 설계 순서에 따라 기능을 설계해볼 것이다.<br>이번 시간엔, 다음 순서 중 <strong>요구사항 정의</strong> 단계를 살펴보자.</p>
+<ol>
+<li><strong>기능/비기능 요구사항 정의</strong>: 무엇을 만들어야 하는지 구체화한다.</li>
+<li><strong>Core Entities</strong> 정의: 시스템이 사용할 <strong>핵심 객체</strong>를 정의한다.</li>
+<li><strong>API 설계</strong>: 요구사항마다 ‘<strong>무엇을 어떻게 호출하면 어떻게 처리하고 응답할지</strong>’ 정한다</li>
+<li><strong>HLD</strong>: <strong>동작하는 시스템</strong>을 설계한다.</li>
+<li><strong>Deep Dive</strong>: 시스템이 <strong>비기능 요구사항</strong>까지 충족하도록 개선한다.</li>
+</ol>
+<h2 id="1.-기능-요구사항-정의">1. 기능 요구사항 정의</h2>
+<figure class="rilog-figure"><img src="/assets/rilog/579-image-1.png#1752x897" alt="exec-d3781eb8-4ea7-4ba4-9fa3-9aa5411df6c1.png" width="493" loading="lazy"><figcaption>사용자가 어떤 행동을 하면 시스템이 어떤 응답을 하는지 정의한다</figcaption></figure>
+<p><strong>“우리 시스템이 무엇을 해야 하는가?”</strong>를 정하는 단계다.<br>사용자가 어떤 행동을 하면 시스템이 무엇을 돌려주는지 문장으로 정의하면 된다.</p>
+<figure class="rilog-figure"><img src="/assets/rilog/579-image-2.png#1752x897" alt="exec-c756c03d-30f0-434e-a11b-5de3baf3982a.png" width="487" loading="lazy"><figcaption>지금은 영상이 얼마나 빨리 재생되어야 하는지 고민하지 말자.</figcaption></figure>
+<p>이 때, “<strong>기능이 어떻게 동작해야 하는가</strong>”와 “<strong>기능이 얼마나 잘 동작해야 하는가</strong>”를 구분해야 한다.<br>이 단계에서는 기능이 어떻게 동작해야 하는지만 다룬다.<br>기능이 얼마나 잘 동작해야 하는지는 비기능 요구사항에서 다루니, 지금 고민하지 말자.</p>
+<figure class="rilog-figure"><img src="/assets/rilog/579-image-3.png#1568x1003" alt="exec-f1025658-722c-43a8-9d8d-19c8374ceaa9.png" width="470" loading="lazy"><figcaption>영상 시청 흐름에 필수적이지 않은 기능들은 범위 밖으로 제외한다.</figcaption></figure>
+<p>핵심 흐름을 구현할 때 필요 없는 기능까지 당장 설계할 필요는 없다.<br>지금 설계하지 않고 <strong>범위 밖으로 제외할 기능</strong>도 정하자.</p>
+<p>미리 정해두지 않으면 다음과 같은 문제가 생긴다.</p>
+<ol>
+<li>팀원이 “이 기능은 왜 없어요?”라고 물어봤을 때 대답하기 어렵다.</li>
+<li>나도 모르게 범위 밖 기능까지 설계하게 된다.</li>
+</ol>
+<h2 id="2.-비기능-요구사항-정의">2. 비기능 요구사항 정의</h2>
+<p>이번엔 “얼마나 잘 동작해야 하는가”를 정하는 단계다.<br>다음 4가지 항목을 각각 정의해보자.</p>
+<ol>
+<li><strong>가용성</strong>: 서비스가 얼마나 멈추지 않고 동작해야 하는가?</li>
+<li><strong>확장성</strong>: 사용자와 데이터가 얼마나 늘어나도 감당 가능해야 하는가?</li>
+<li><strong>성능</strong>: 사용자가 얼마나 빨리 응답 받아야 하는가?</li>
+<li><strong>신뢰성</strong>: 저장한 데이터를 얼마나 잘 보관해야 하는가? 중복 처리나 누락이 얼마나 없어야 하는가?</li>
+</ol>
+<p>만약 분산 시스템이라면 다음 항목까지 정의해야 한다.</p>
+<ol>
+<li><strong>일관성</strong>: 사용자가 항상 최신 데이터를 응답 받아야 하는가?</li>
+</ol>
+<h3 id="2-1.-가용성">2-1. 가용성</h3>
+<figure class="rilog-figure"><img src="/assets/rilog/579-image-4.png#1752x897" alt="exec-f8e6885b-5ce1-4702-b603-8df7e7c4fb99.png" width="483" loading="lazy"><figcaption>가용성 목표 예시</figcaption></figure>
+<p>‘<strong>서비스가 멈추지 않고 동작한 시간의 비율</strong>’을 가용성이라고 한다.<br>보통 %로 표현하는데, 얼마나 멈춰도 되는건지 쉽게 확인하기 위해 다운타임으로도 표현하면 좋다.</p>
+<p>가용성 목표는 기능마다 각각 결정하면 된다.<br><strong>해당 기능이 멈췄을 때 문제가 얼마나 큰지</strong>에 따라 정하자.</p>
+<p>예를 들어, 영상 시청 기능은 장애 발생시 모든 사용자가 영향을 받으니 가용성 목표를 높게 설정할 수 있다.<br>반대로, 영상 업로드 기능은 일부 사용자만 영향을 받으니 낮게 설정할 수 있다.</p>
+<h3 id="2-2.-확장성">2-2. 확장성</h3>
+<figure class="rilog-figure"><img src="/assets/rilog/579-image-5.png#1774x887" alt="exec-6e28c080-628b-416c-8f1d-68f0d6b75fed.png" width="479" loading="lazy"><figcaption>확장성 목표 예시</figcaption></figure>
+<p>‘<strong>사용자와 데이터가 얼마나 늘어도 성능을 유지할 수 있는가</strong>’를 확장성이라고 한다.</p>
+<p>어느 정도 규모를 감당해야 하는지를 결정하면 된다.<br>그 규모는 DAU, 가장 붐빌 때의 QPS, 하루에 쌓이는 데이터 양 등이 있을 수 있다.</p>
+<h3 id="2-3.-성능">2-3. 성능</h3>
+<figure class="rilog-figure"><img src="/assets/rilog/579-image-6.png#2172x724" alt="exec-11bd77d7-00df-4e15-93f7-d4228bcafc0a.png" width="542" loading="lazy"><figcaption>성능 목표 예시</figcaption></figure>
+<p>‘<strong>사용자가 얼마나 빨리 응답받아야 하는지</strong>’를 성능이라고 한다.</p>
+<p>성능을 표현할 땐 평균보다 <strong>p99</strong>를 사용하자.<br>평균만 관찰하면, 일부 사용자가 늦게 응답받는 문제가 발생하더라도 알아차릴 수 없다.</p>
+<p>또한, 성능을 측정할 때 어디서부터 어디까지를 측정할건지 명확히 하자.<br>예를 들면, “사용자가 재생 버튼을 눌렀을 때 부터 화면에 영상이 재생될 때 까지 p99 5초 이하”처럼 정할 수 있다.</p>
+<h3 id="2-4.-신뢰성">2-4. 신뢰성</h3>
+<figure class="rilog-figure"><img src="/assets/rilog/579-image-7.png#1774x887" alt="exec-935c87a8-9da1-4044-bbd6-6484bfbf6934.png" width="455" loading="lazy"><figcaption>신뢰성 목표 예시</figcaption></figure>
+<p>‘<strong>맡긴 것이 끝까지 무사한지</strong>’를 신뢰성이라고 한다.<br>서버에 한 번 업로드한 데이터가 사라지거나 깨지지 않는 것, 요청이 누락되거나 중복 처리되지 않는 것을 등이 있다.</p>
+<p>신뢰성은 ‘얼마나 포기해도 되는가’로 표현하자.<br>예를 들면 “업로드에 성공했다고 응답한 영상은 하나도 잃지 않는다”처럼 정할 수 있다.</p>
+<h3 id="2-5.-일관성">2-5. 일관성</h3>
+<figure class="rilog-figure"><img src="/assets/rilog/579-image-8.png#1752x897" alt="exec-3f07e382-0159-463b-ba93-8d092b1ab004.png" width="457" loading="lazy"><figcaption>PACELC 요약</figcaption></figure>
+<p><strong>PACELC</strong>를 통해, 우리의 분산 시스템이 일관성을 어떻게 다룰지 표현해보자.<br>PACELC의 의미는 다음과 같다. 하나씩 알아보자.</p>
+<ul>
+<li>PAC: 파티션이 발생했을 때 무엇을 선택할 것인가?
+<ol>
+<li><strong>P</strong>artition: 파티션이 발생했을 때(시스템 사이 네트워크가 끊긴 상황)</li>
+<li><strong>A</strong>vailability: 가용성을 선택한다</li>
+<li><strong>C</strong>onsistency: 일관성을 선택한다</li>
+</ol></li>
+<li>ELC: 네트워크가 정상일 때 무엇을 선택할 것인가?
+<ol>
+<li><strong>E</strong>lse: 네트워크가 정상일 때(시스템이 네트워크로 연결된 상황)</li>
+<li><strong>L</strong>atency: 지연을 선택한다</li>
+<li><strong>C</strong>onsistency: 일관성을 선택한다</li>
+</ol></li>
+</ul>
+<h4 id="PAC">PAC</h4>
+<figure class="rilog-figure"><img src="/assets/rilog/579-image-9.png#1754x897" alt="exec-959e8298-47b4-4a0e-b73d-3fa15db02ce7.png" width="479" loading="lazy"><figcaption>PA는 이전 값을 응답해 가용성을 챙기고, PC는 오류를 응답해 일관성을 챙긴다</figcaption></figure>
+<p><strong>PAC</strong>는 파티션이 발생했을 때 무엇을 선택할지를 의미한다.</p>
+<p>파티션이 발생했으니, 다른 시스템에 있는 <strong>최신 값을 조회할 수 없다</strong>.<br>이럴 때 어떻게 동작하도록 만들 것인가?</p>
+<p>가용성(<strong>A</strong>vailability)을 선택하면 현재 시스템에 있는 데이터로 응답한다.<br>이점과 한계는 다음과 같다.</p>
+<ul>
+<li>이점: 파티션이 발생해도 서버가 요청을 처리할 수 있다.</li>
+<li>한계: 과거의 데이터로 응답한다.</li>
+</ul>
+<p>일관성(<strong>C</strong>onsistency)을 선택하면 네트워크가 복구되기 전까지 오류를 응답한다.<br>이점과 한계는 다음과 같다.</p>
+<ul>
+<li>이점: 사용자가 최신 데이터만 응답 받는다.</li>
+<li>한계: 파티션이 발생하면 서버가 요청을 처리할 수 없다.</li>
+</ul>
+<h4 id="ELC">ELC</h4>
+<figure class="rilog-figure"><img src="/assets/rilog/579-image-10.png#1774x887" alt="exec-5245e19c-7e7a-4464-8490-26c2d80b4ec8.png" width="483" loading="lazy"><figcaption>EL은 바로 응답해 응답 시간을 챙기고, EC는 모든 서버에 동시에 반영해 일관성을 챙긴다</figcaption></figure>
+<p><strong>ELC</strong>는 평소(파티션이 발생하지 않았을 때)에 무엇을 선택할지를 의미한다.</p>
+<p>시스템이 네트워크로 연결되어 있으니, <strong>최신 값을 다른 시스템에도 반영</strong>해야 한다.<br>하지만, 다른 시스템에 값을 복제하는건 비교적 <strong>오래 걸린다</strong>.<br>이럴 때 어떻게 동작하도록 만들 것인가?</p>
+<p>지연(<strong>L</strong>atency)을 선택하면 <strong>현재 시스템에만 최신 값을 반영</strong>하고 바로 응답한다.<br>이점과 한계는 다음과 같다.</p>
+<ul>
+<li>이점: 비교적 빠르게 응답할 수 있다.</li>
+<li>한계: 다른 시스템에 최신 값이 반영되기까지 서로 다른 값을 지닌다.</li>
+</ul>
+<p>일관성(<strong>C</strong>onsistency)을 선택하면 <strong>다른 시스템에도 최신 값을 반영</strong>하고 나서야 응답한다.<br>이점과 한계는 다음과 같다.</p>
+<ul>
+<li>이점: 모든 시스템에 최신 값이 동시에 반영된다.</li>
+<li>한계: 다른 시스템에 반영하고 나서야 응답하니, 응답까지 오래 걸린다.</li>
+</ul>
+<h4 id="PACELC-요약">PACELC 요약</h4>
+<div class="article-table"><table><tbody><tr><th colspan="1" rowspan="1"><p>상황</p></th><th colspan="1" rowspan="1"><p>선택지</p></th><th colspan="1" rowspan="1"><p>의미</p></th></tr><tr><td colspan="1" rowspan="2"><p>Partition<br>(파티션이 발생했을 때)</p></td><td colspan="1" rowspan="1"><p>Availability</p></td><td colspan="1" rowspan="1"><p>가용성을 챙기지만, 과거 데이터로 응답한다.</p></td></tr><tr><td colspan="1" rowspan="1"><p>Consistency</p></td><td colspan="1" rowspan="1"><p>최신 데이터만 응답하지만, 파티션 상황에서 오류를 응답한다.</p></td></tr><tr><td colspan="1" rowspan="2"><p>Else<br>(파티션이 발생하지 않았을 때)</p></td><td colspan="1" rowspan="1"><p>Latency</p></td><td colspan="1" rowspan="1"><p>빠르게 응답하지만, 다른 시스템이 잠깐 과거 데이터를 응답한다.</p></td></tr><tr><td colspan="1" rowspan="1"><p>Consistency</p></td><td colspan="1" rowspan="1"><p>모든 시스템이 동시에 최신 값을 지니지만, 응답까지 오래 걸린다</p></td></tr></tbody></table></div>
+<p>PACELC를 요약하면 위와 같다.<br>무엇을 선택했는지에 따라 다음과 같이 표현하면 된다.</p>
+<ul>
+<li><strong>PA/EL</strong>: 파티션 때는 가용성을, 평소에는 속도를 선택한다.</li>
+<li><strong>PC/EC</strong>: 파티션 때와 평소 모두 일관성을 선택한다.</li>
+</ul>
+<p>PACLEC는 <strong>데이터마다 다르게 설정</strong>할 수 있다.<br>데이터가 항상 최신 값이어야 하는지, 잠깐 과거 값이더라도 괜찮은지에 따라 결정하자.</p>
+<h3 id="요약">요약</h3>
+<p>지금까지의 내용을 요약하면 다음과 같다.</p>
+<div class="article-table"><table><tbody><tr><th colspan="1" rowspan="1"><p>종류</p></th><th colspan="1" rowspan="1"><p>정하는 것</p></th></tr><tr><td colspan="1" rowspan="1"><p>기능 요구사항</p></td><td colspan="1" rowspan="1"><p>우리 시스템이 무엇을 해야 하는가?<br>이번에 고려하지 않을 범위 밖 기능은 무엇인가?</p></td></tr><tr><td colspan="1" rowspan="1"><p>비기능 요구사항</p></td><td colspan="1" rowspan="1"><p>우리 시스템이 얼마나 잘 동작해야 하는가?</p></td></tr></tbody></table></div>
+<div class="article-table"><table><tbody><tr><th colspan="1" rowspan="1"><p>비기능 요구사항 항목</p></th><th colspan="1" rowspan="1"><p>정하는 것</p></th></tr><tr><td colspan="1" rowspan="1"><p>가용성</p></td><td colspan="1" rowspan="1"><p>서비스가 얼마나 멈추지 않고 동작해야 하는가?</p></td></tr><tr><td colspan="1" rowspan="1"><p>확장성</p></td><td colspan="1" rowspan="1"><p>사용자와 데이터가 얼마나 늘어나도 감당 가능해야 하는가?</p></td></tr><tr><td colspan="1" rowspan="1"><p>성능</p></td><td colspan="1" rowspan="1"><p>사용자가 얼마나 빨리 응답 받아야 하는가?</p></td></tr><tr><td colspan="1" rowspan="1"><p>신뢰성</p></td><td colspan="1" rowspan="1"><p>저장한 데이터를 얼마나 잘 보관해야 하는가?<br>중복 처리나 누락이 얼마나 없어야 하는가?</p></td></tr><tr><td colspan="1" rowspan="1"><p>일관성</p></td><td colspan="1" rowspan="1"><p>사용자가 항상 최신 데이터를 응답 받아야 하는가?</p></td></tr></tbody></table></div>
+<div class="article-table"><table><tbody><tr><th colspan="1" rowspan="1"><p>가용성 선택</p></th><th colspan="1" rowspan="1"><p>의미</p></th></tr><tr><td colspan="1" rowspan="1"><p>PA/EL</p></td><td colspan="1" rowspan="1"><p>파티션이 발생했을 때는 가용성을 챙긴다.<br>평소에는 낮은 지연을 챙긴다.</p></td></tr><tr><td colspan="1" rowspan="1"><p>PC/EC</p></td><td colspan="1" rowspan="1"><p>파티션이 발생했을 때와 평소에 모두 일관성을 챙긴다.</p></td></tr></tbody></table></div>
+<p>기능 요구사항과 비기능 요구사항을 모두 잘 정의했다면, 다음 단계인 <strong>Core Entities 정의</strong>로 넘어가보자.</p>
